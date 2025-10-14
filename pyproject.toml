@@ -1,0 +1,129 @@
+[project]
+name = "queryboost"
+version = "0.1.0"
+description = "The official Python client for the Queryboost API"
+authors = [
+  {name = "Johnson Kuan", email = "johnson@queryboost.com"},
+]
+keywords = ["queryboost", "ai", "batch", "streaming", "inference"]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "datasets>=4.1.1",
+  "more-itertools>=10.8.0",
+  "pyarrow>=21.0.0",
+  "pyright>=1.1.402",
+  "tqdm>=4.67.1",
+]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: Apache Software License"
+]
+
+[project.urls]
+Homepage = "https://queryboost.com"
+Repository = "https://github.com/queryboost/queryboost"
+
+[tool.uv]
+managed = true
+required-version = ">=0.5.0"
+dev-dependencies = [
+  "pyright==1.1.406",
+  "mypy",
+  "pytest",
+  "pytest-cov",
+  "ruff",
+]
+
+[build-system]
+requires = ["hatchling==1.26.3", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = ["src/*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/queryboost"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/*.toml",
+  "/*.lock",
+  "/*.md",
+  "src/*",
+  "tests/*",
+]
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = [
+  "error"
+]
+
+[tool.pyright]
+ignore = ["**/pyarrow"]
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = [
+  "pyarrow.*",
+  "datasets.*",
+  "tqdm.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+output-format = "grouped"
+target-version = "py312"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  # isort
+  "I",
+  # bugbear rules
+  "B",
+  # remove unused imports
+  "F401",
+  # bare except statements
+  "E722",
+  # unused arguments
+  "ARG",
+  # print statements
+  "T201",
+  "T203",
+  # misuse of typing.TYPE_CHECKING
+  "TC004",
+  # import rules
+  "TID251",
+]
+ignore = [
+  # mutable defaults
+  "B006",
+]
+unfixable = [
+  # disable auto fix for print statements
+  "T201",
+  "T203",
+]
+
+[tool.ruff.lint.isort]
+length-sort = true
+length-sort-straight = true
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+known-first-party = ["queryboost", "tests"]
