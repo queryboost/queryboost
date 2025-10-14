@@ -24,7 +24,7 @@ Queryboost introduces a new architecture for AI-native data processing at scale:
 
 - **Probability Scores** — Every output includes per-column probability scores derived from token-level log probabilities, enabling quality filtering and uncertainty quantification. For boolean outputs, scores represent P(True).
 
-- **Optimized Model** — Powered by `queryboost-4b`, a 4B-parameter model optimized for data processing tasks with structured outputs. Outperforms larger models on reading comprehension and natural language inference. [See benchmarks →](https://queryboost.com)
+- **Optimized Model** — Powered by `queryboost-4b`, a 4B-parameter model optimized for data processing tasks with structured outputs. Outperforms larger models on reading comprehension and natural language inference. [See benchmarks →](https://queryboost.com/#benchmarks)
 
 The Python SDK provides a simple interface to the Queryboost API:
 
