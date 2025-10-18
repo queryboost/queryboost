@@ -24,8 +24,10 @@ class TestQueryboost:
         assert client._config.port == 443
         assert client._location == "grpc+tls://api.queryboost.com:443"
 
-        # Verify FlightClient was created
-        mock_flight_client.assert_called_once_with(location=client._location)
+        # Verify FlightClient was created with location and tls_root_certs
+        call_kwargs = mock_flight_client.call_args[1]
+        assert call_kwargs["location"] == client._location
+        assert "tls_root_certs" in call_kwargs
 
         # Verify authentication was called
         mock_client.authenticate.assert_called_once()
@@ -257,13 +259,12 @@ class TestQueryboost:
 
         client = Queryboost(
             api_key="test_key",
-            tls_root_certs=b"cert_data",
             disable_server_verification=True,
         )
 
         # Verify kwargs were passed to FlightClient
         call_kwargs = mock_flight_client.call_args[1]
-        assert "tls_root_certs" in call_kwargs
+        assert "tls_root_certs" in call_kwargs  # Always included from certifi
         assert "disable_server_verification" in call_kwargs
 
     @patch("queryboost.queryboost.flight.FlightClient")
