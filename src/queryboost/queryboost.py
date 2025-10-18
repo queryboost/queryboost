@@ -4,6 +4,7 @@ import logging
 from typing import Optional
 from pathlib import Path
 
+import certifi
 import pyarrow.flight as flight
 
 from .auth import ApiKeyClientAuth
@@ -43,8 +44,14 @@ class Queryboost:
         self._location = f"{self._config.url}:{self._config.port}"
         """ :meta private: """
 
+        # Load the trusted CA bundle (PEM-encoded) used for TLS certificate verification
+        # certifi provides Mozilla's root CA bundle, ensuring consistent trust across platforms
+        with open(certifi.where(), "rb") as f:
+            tls_root_certs = f.read()
+
         self._client = flight.FlightClient(
             location=self._location,
+            tls_root_certs=tls_root_certs,
             **kwargs,
         )
         """ :meta private: """

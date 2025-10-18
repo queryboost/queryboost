@@ -871,10 +871,10 @@ name = "queryboost"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "datasets" },
     { name = "more-itertools" },
     { name = "pyarrow" },
-    { name = "pyright" },
     { name = "tqdm" },
 ]
 
@@ -889,10 +889,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi", specifier = ">=2025.8.3" },
     { name = "datasets", specifier = ">=4.1.1" },
     { name = "more-itertools", specifier = ">=10.8.0" },
     { name = "pyarrow", specifier = ">=21.0.0" },
-    { name = "pyright", specifier = ">=1.1.402" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
 
