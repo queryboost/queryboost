@@ -100,7 +100,7 @@ class TestQueryboost:
         client.run(data=data, prompt=prompt)
 
         # Verify DataBatcher was created
-        mock_data_batcher_cls.assert_called_once_with(data, 32)
+        mock_data_batcher_cls.assert_called_once_with(data, 16)
 
         # Verify prompt validation
         mock_validate.assert_called_once_with(prompt, ["col1", "col2"])

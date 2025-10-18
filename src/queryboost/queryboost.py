@@ -65,7 +65,7 @@ class Queryboost:
         prompt: str,
         name: str = str(uuid.uuid4()),
         num_gpus: int | None = None,
-        batch_size: int = 32,
+        batch_size: int = 16,
         batch_handler: Optional[BatchHandler] = None,
     ) -> None:
         """Process data with a prompt using Queryboost.
@@ -82,7 +82,7 @@ class Queryboost:
             num_gpus: The number of GPUs to allocate for processing. If None, automatically selects based on workload.
                 Defaults to None.
             batch_size: The number of rows to send to the server in each write operation. The server performs
-                dynamic and continuous batching to maximize GPU utilization and throughput. Defaults to 32.
+                dynamic and continuous batching to maximize GPU utilization and throughput. Defaults to 16.
             batch_handler: A BatchHandler instance that determines how to handle the processed batches.
                 Defaults to LocalParquetBatchHandler which saves results to parquet files.
         """

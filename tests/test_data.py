@@ -233,11 +233,11 @@ class TestDataBatcher:
         assert batches[0] == {"x": [1, 2]}
 
     def test_default_batch_size(self):
-        """Test default batch size of 32."""
+        """Test default batch size of 16."""
         data = [{"val": i} for i in range(100)]
         batcher = DataBatcher(data)
 
-        assert batcher._batch_size == 32
+        assert batcher._batch_size == 16
 
     def test_iterator_consumed_once(self):
         """Test that iterator-based batcher can only be iterated once."""
