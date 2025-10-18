@@ -49,7 +49,10 @@ qb = Queryboost(
 )
 
 # Load data (supports HF Dataset, IterableDataset, list of dicts, or iterator of dicts)
-data = load_dataset("queryboost/OpenCustConvo", split="train", streaming=True)
+data = load_dataset("queryboost/OpenCustConvo", split="train")
+
+# Select first 160 rows
+data = data.select(range(160))
 
 # Use {column_name} to insert column values into prompt
 prompt = "Did the customer's issue get resolved in this {chat_transcript}? Explain briefly."
@@ -61,6 +64,7 @@ qb.run(
     data,
     prompt,
     name="cust_convo_analysis", # Unique name for this run
+    num_gpus=5, # Number of GPUs to reserve for this run
 )
 
 # Read the results

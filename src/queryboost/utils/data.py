@@ -14,7 +14,7 @@ class DataBatcher:
     def __init__(
         self,
         data: BatchableData,
-        batch_size: int = 32,
+        batch_size: int = 16,
     ):
         """The ``DataBatcher`` class generates batches from ``BatchableData``.
 
@@ -28,7 +28,7 @@ class DataBatcher:
 
         Args:
             data: The data source to batch. Must be a ``BatchableData`` type.
-            batch_size: The size of batches to yield. Defaults to 32.
+            batch_size: The size of batches to yield. Defaults to 16.
 
         Attributes:
             schema: The PyArrow schema of the data, inferred from the input data source.
