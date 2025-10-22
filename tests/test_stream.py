@@ -485,3 +485,34 @@ class TestBatchStreamer:
 
         # Verify progress bar was closed even on exception
         mock_pbar.close.assert_called_once()
+
+    def test_track_progress_updates_postfix_on_write_after_pbar_init(self):
+        """Test _track_progress updates postfix when write events occur after pbar is initialized."""
+        data = [{"x": i} for i in range(10)]
+        data_batcher = DataBatcher(data, batch_size=5)
+        handler = MockBatchHandler()
+        streamer = BatchStreamer(data_batcher, handler)
+
+        # Simulate progress events with write happening AFTER processing_started
+        streamer._progress_queue.put({"event": "processing_started", "message": "AI processing"})
+        streamer._progress_queue.put({"event": "write", "num_rows": 5})
+        streamer._progress_queue.put({"event": "write", "num_rows": 5})
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "read", "num_rows": 5})
+        streamer._progress_queue.put({"event": "read", "num_rows": 5})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm") as mock_tqdm:
+            with patch("queryboost.stream.tqdm.write"):
+                mock_pbar = Mock()
+                mock_tqdm.return_value = mock_pbar
+
+                streamer._track_progress_and_exceptions()
+
+                # Verify progress bar was created
+                mock_tqdm.assert_called_once()
+
+                # Verify set_postfix_str was called for write events (line 140 coverage)
+                assert mock_pbar.set_postfix_str.call_count == 2
+                mock_pbar.set_postfix_str.assert_any_call("Sent: 5")
+                mock_pbar.set_postfix_str.assert_any_call("Sent: 10")

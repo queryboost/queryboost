@@ -135,6 +135,10 @@ class BatchStreamer:
 
                 if event == "write":
                     sent_num_rows += num_rows
+
+                    if self._pbar is not None:
+                        self._pbar.set_postfix_str(f"Sent: {sent_num_rows}")
+
                 elif event == "read":
                     received_num_rows += num_rows
 
@@ -151,9 +155,6 @@ class BatchStreamer:
                         total=self._num_rows,
                         desc=message,
                     )
-
-                if self._pbar is not None:
-                    self._pbar.set_postfix_str(f"Sent: {sent_num_rows}")
 
                 if message and event not in _EVENTS_TO_SKIP_TQDM_WRITE:
                     tqdm.write(message)
