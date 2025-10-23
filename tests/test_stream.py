@@ -396,6 +396,28 @@ class TestBatchStreamer:
         queued_error = streamer._exception_queue.get()
         assert queued_error == test_error
 
+    def test_track_progress_raises_flight_unavailable_error_as_queryboost_unavailable(self):
+        """Test _track_progress_and_exceptions wraps FlightUnavailableError as QueryboostUnavailableError."""
+        from queryboost.exceptions import QueryboostUnavailableError
+
+        data = [{"x": 1}]
+        data_batcher = DataBatcher(data, batch_size=1)
+        handler = MockBatchHandler()
+        streamer = BatchStreamer(data_batcher, handler)
+
+        # Queue a FlightUnavailableError
+        flight_error = flight.FlightUnavailableError("Flight error: Connection lost")
+        streamer._exception_queue.put(flight_error)
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm"):
+            with pytest.raises(QueryboostUnavailableError) as exc_info:
+                streamer._track_progress_and_exceptions()
+
+            assert "Connection lost" in str(exc_info.value)
+            assert "Flight error:" not in str(exc_info.value)
+
     def test_track_progress_raises_flight_error_as_server_error(self):
         """Test _track_progress_and_exceptions wraps FlightError as QueryboostServerError."""
         from queryboost.exceptions import QueryboostServerError

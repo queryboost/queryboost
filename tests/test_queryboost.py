@@ -4,7 +4,10 @@ import pytest
 import pyarrow.flight as flight
 
 from queryboost import Queryboost
-from queryboost.exceptions import QueryboostConfigurationError
+from queryboost.exceptions import (
+    QueryboostConfigurationError,
+    QueryboostUnavailableError,
+)
 from queryboost.config.config import Config
 
 
@@ -328,7 +331,7 @@ class TestQueryboost:
         mock_batch_streamer = Mock()
         # First call raises FlightUnavailableError, second call succeeds
         mock_batch_streamer.stream.side_effect = [
-            flight.FlightUnavailableError("Connection lost"),
+            QueryboostUnavailableError("Connection lost"),
             None,
         ]
         mock_batch_streamer_cls.return_value = mock_batch_streamer
