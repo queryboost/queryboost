@@ -13,6 +13,7 @@ from .utils import DataBatcher, validate_prompt
 from .config import ConfigBuilder
 from .stream import BatchStreamer
 from .handlers import BatchHandler, LocalParquetBatchHandler
+from .exceptions import QueryboostUnavailableError
 
 logger = logging.getLogger(__name__)
 """ :meta private: """
@@ -116,7 +117,7 @@ class Queryboost:
 
         try:
             batch_streamer.stream(self._client, descriptor)
-        except flight.FlightUnavailableError:
+        except QueryboostUnavailableError:
             # Handle transient gRPC connection loss (idle timeout, broken pipe, reset by peer)
             # Reconnect and retry once
             self._connect()

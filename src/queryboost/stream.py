@@ -9,7 +9,11 @@ from tqdm import tqdm
 
 from queryboost.utils import DataBatcher
 from queryboost.handlers import BatchHandler
-from queryboost.exceptions import QueryboostServerError, clean_flight_error_message
+from queryboost.exceptions import (
+    QueryboostServerError,
+    QueryboostUnavailableError,
+    clean_flight_error_message,
+)
 
 # Events to skip when calling tqdm.write()
 _EVENTS_TO_SKIP_TQDM_WRITE = frozenset(["processing_started"])
@@ -164,7 +168,12 @@ class BatchStreamer:
 
                     if isinstance(e, flight.FlightError):
                         error_message = clean_flight_error_message(e)
+
+                        if isinstance(e, flight.FlightUnavailableError):
+                            raise QueryboostUnavailableError(error_message) from None
+
                         raise QueryboostServerError(error_message) from None
+
                     else:
                         raise e
 

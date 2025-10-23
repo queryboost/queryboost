@@ -25,6 +25,10 @@ class QueryboostServerError(QueryboostError):
     """Raised when a server-side error occurs."""
 
 
+class QueryboostUnavailableError(QueryboostServerError):
+    """Raised when a server-side unavailable error occurs."""
+
+
 def clean_flight_error_message(flight_error: FlightError) -> str:
     """Extract clean error message from PyArrow Flight errors.
 
