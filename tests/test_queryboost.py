@@ -5,8 +5,8 @@ import pyarrow.flight as flight
 
 from queryboost import Queryboost
 from queryboost.exceptions import (
-    QueryboostConfigurationError,
     QueryboostUnavailableError,
+    QueryboostConfigurationError,
 )
 from queryboost.config.config import Config
 
