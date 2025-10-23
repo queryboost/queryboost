@@ -1,7 +1,7 @@
 import json
 import uuid
 import logging
-from typing import Optional
+from typing import Any, Optional
 from pathlib import Path
 
 import certifi
@@ -27,6 +27,7 @@ class Queryboost:
         api_key: Optional[str] = None,
         url: Optional[str] = None,
         port: Optional[int] = None,
+        flight_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """The ``Queryboost`` class is the main entry point for interacting with Queryboost via this Python SDK."""
 
@@ -41,6 +42,9 @@ class Queryboost:
         """ :meta private: """
 
         self._location = f"{self._config.url}:{self._config.port}"
+        """ :meta private: """
+
+        self._flight_client_kwargs = flight_client_kwargs or {}
         """ :meta private: """
 
         self._connect()
@@ -59,6 +63,7 @@ class Queryboost:
         self._client = flight.FlightClient(
             location=self._location,
             tls_root_certs=tls_root_certs,
+            **self._flight_client_kwargs,
         )
 
         # Authenticate with Flight handshake
@@ -93,9 +98,7 @@ class Queryboost:
         """
 
         if not batch_handler:
-            batch_handler = LocalParquetBatchHandler(
-                output_dir=Path(DEFAULT_CACHE_DIR).expanduser() / name
-            )
+            batch_handler = LocalParquetBatchHandler(output_dir=Path(DEFAULT_CACHE_DIR).expanduser() / name)
 
         data_batcher = DataBatcher(data, batch_size)
 
@@ -107,9 +110,7 @@ class Queryboost:
             "num_gpus": num_gpus,
             "num_rows": data_batcher.num_rows,
         }
-        descriptor = flight.FlightDescriptor.for_command(
-            json.dumps(command).encode("utf-8")
-        )
+        descriptor = flight.FlightDescriptor.for_command(json.dumps(command).encode("utf-8"))
 
         batch_streamer = BatchStreamer(data_batcher, batch_handler)
 
@@ -120,5 +121,3 @@ class Queryboost:
             # Reconnect and retry once
             self._connect()
             batch_streamer.stream(self._client, descriptor)
-        except Exception:
-            raise
