@@ -27,7 +27,6 @@ class Queryboost:
         api_key: Optional[str] = None,
         url: Optional[str] = None,
         port: Optional[int] = None,
-        **kwargs,
     ):
         """The ``Queryboost`` class is the main entry point for interacting with Queryboost via this Python SDK."""
 
@@ -44,6 +43,14 @@ class Queryboost:
         self._location = f"{self._config.url}:{self._config.port}"
         """ :meta private: """
 
+        self._connect()
+
+    def _connect(self) -> None:
+        """Connect to the Queryboost server and authenticate with the Flight handshake.
+
+        :meta private:
+        """
+
         # Load the trusted CA bundle (PEM-encoded) used for TLS certificate verification
         # certifi provides Mozilla's root CA bundle, ensuring consistent trust across platforms
         with open(certifi.where(), "rb") as f:
@@ -52,9 +59,7 @@ class Queryboost:
         self._client = flight.FlightClient(
             location=self._location,
             tls_root_certs=tls_root_certs,
-            **kwargs,
         )
-        """ :meta private: """
 
         # Authenticate with Flight handshake
         self._client.authenticate(self._auth)
@@ -88,7 +93,9 @@ class Queryboost:
         """
 
         if not batch_handler:
-            batch_handler = LocalParquetBatchHandler(output_dir=Path(DEFAULT_CACHE_DIR).expanduser() / name)
+            batch_handler = LocalParquetBatchHandler(
+                output_dir=Path(DEFAULT_CACHE_DIR).expanduser() / name
+            )
 
         data_batcher = DataBatcher(data, batch_size)
 
@@ -100,7 +107,18 @@ class Queryboost:
             "num_gpus": num_gpus,
             "num_rows": data_batcher.num_rows,
         }
-        descriptor = flight.FlightDescriptor.for_command(json.dumps(command).encode("utf-8"))
+        descriptor = flight.FlightDescriptor.for_command(
+            json.dumps(command).encode("utf-8")
+        )
 
         batch_streamer = BatchStreamer(data_batcher, batch_handler)
-        batch_streamer.stream(self._client, descriptor)
+
+        try:
+            batch_streamer.stream(self._client, descriptor)
+        except flight.FlightUnavailableError:
+            # Handle transient gRPC connection loss (idle timeout, broken pipe, reset by peer)
+            # Reconnect and retry once
+            self._connect()
+            batch_streamer.stream(self._client, descriptor)
+        except Exception:
+            raise

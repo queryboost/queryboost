@@ -252,22 +252,6 @@ class TestQueryboost:
             assert isinstance(call_args[1], flight.FlightDescriptor)
 
     @patch("queryboost.queryboost.flight.FlightClient")
-    def test_initialization_with_kwargs(self, mock_flight_client):
-        """Test that kwargs are passed to FlightClient."""
-        mock_client = Mock()
-        mock_flight_client.return_value = mock_client
-
-        client = Queryboost(
-            api_key="test_key",
-            disable_server_verification=True,
-        )
-
-        # Verify kwargs were passed to FlightClient
-        call_kwargs = mock_flight_client.call_args[1]
-        assert "tls_root_certs" in call_kwargs  # Always included from certifi
-        assert "disable_server_verification" in call_kwargs
-
-    @patch("queryboost.queryboost.flight.FlightClient")
     def test_config_is_built_correctly(self, mock_flight_client):
         """Test that config is built using ConfigBuilder."""
         mock_client = Mock()
@@ -320,3 +304,85 @@ class TestQueryboost:
 
         # Verify it doesn't raise an error and stream is called
         assert mock_batch_streamer.stream.called
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    @patch("queryboost.queryboost.BatchStreamer")
+    @patch("queryboost.queryboost.DataBatcher")
+    @patch("queryboost.queryboost.validate_prompt")
+    def test_run_retries_on_flight_unavailable_error(
+        self,
+        _mock_validate,
+        mock_data_batcher_cls,
+        mock_batch_streamer_cls,
+        mock_flight_client,
+    ):
+        """Test that run retries once on FlightUnavailableError."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        mock_data_batcher = Mock()
+        mock_data_batcher.schema.names = ["text"]
+        mock_data_batcher.num_rows = 1000
+        mock_data_batcher_cls.return_value = mock_data_batcher
+
+        mock_batch_streamer = Mock()
+        # First call raises FlightUnavailableError, second call succeeds
+        mock_batch_streamer.stream.side_effect = [
+            flight.FlightUnavailableError("Connection lost"),
+            None,
+        ]
+        mock_batch_streamer_cls.return_value = mock_batch_streamer
+
+        client = Queryboost(api_key="test_key")
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+
+        # Should not raise an error - retry should succeed
+        client.run(data=data, prompt=prompt)
+
+        # Verify stream was called twice (initial + retry)
+        assert mock_batch_streamer.stream.call_count == 2
+
+        # Verify _connect was called twice (initial + retry)
+        # Initial call is in __init__, retry call is in run
+        assert mock_flight_client.call_count == 2
+        assert mock_client.authenticate.call_count == 2
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    @patch("queryboost.queryboost.BatchStreamer")
+    @patch("queryboost.queryboost.DataBatcher")
+    @patch("queryboost.queryboost.validate_prompt")
+    def test_run_reraises_other_exceptions(
+        self,
+        _mock_validate,
+        mock_data_batcher_cls,
+        mock_batch_streamer_cls,
+        mock_flight_client,
+    ):
+        """Test that run re-raises non-FlightUnavailableError exceptions."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        mock_data_batcher = Mock()
+        mock_data_batcher.schema.names = ["text"]
+        mock_data_batcher.num_rows = 1000
+        mock_data_batcher_cls.return_value = mock_data_batcher
+
+        mock_batch_streamer = Mock()
+        # Raise a different exception
+        test_error = ValueError("Some other error")
+        mock_batch_streamer.stream.side_effect = test_error
+        mock_batch_streamer_cls.return_value = mock_batch_streamer
+
+        client = Queryboost(api_key="test_key")
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+
+        # Should re-raise the ValueError
+        with pytest.raises(ValueError, match="Some other error"):
+            client.run(data=data, prompt=prompt)
+
+        # Verify stream was called only once (no retry for non-FlightUnavailableError)
+        assert mock_batch_streamer.stream.call_count == 1
