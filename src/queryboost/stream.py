@@ -43,7 +43,7 @@ class BatchStreamer:
         self._progress_queue: queue.Queue[dict[str, Any]] = queue.Queue()
         self._exception_queue: queue.Queue[Exception] = queue.Queue()
 
-        self._pbar = None
+        self._pbar: tqdm | None = None
 
         self._stop_event = threading.Event()
 
