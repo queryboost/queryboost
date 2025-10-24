@@ -153,12 +153,17 @@ class BatchStreamer:
                     done_writing = True
                 elif event == "done_reading":
                     done_reading = True
+
+                    if self._pbar is not None:
+                        self._pbar.close()
+
                 elif event == "processing_started":
                     # Initialize the progress bar when the server indicates processing started state
                     self._pbar = tqdm(
                         total=self._num_rows,
                         desc=message,
                     )
+                    self._pbar.set_postfix_str(f"Sent: {sent_num_rows}")
 
                 if message and event not in _EVENTS_TO_SKIP_TQDM_WRITE:
                     tqdm.write(message)
