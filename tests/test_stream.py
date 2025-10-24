@@ -537,5 +537,5 @@ class TestBatchStreamer:
                 # Verify set_postfix_str was called on processing_started and write events
                 assert mock_pbar.set_postfix_str.call_count == 3
                 mock_pbar.set_postfix_str.assert_any_call("Sent: 0")  # Initial call on processing_started
-                mock_pbar.set_postfix_str.assert_any_call("Sent: 5")   # First write event
+                mock_pbar.set_postfix_str.assert_any_call("Sent: 5")  # First write event
                 mock_pbar.set_postfix_str.assert_any_call("Sent: 10")  # Second write event
