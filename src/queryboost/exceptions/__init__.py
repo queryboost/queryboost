@@ -4,7 +4,6 @@ from .exceptions import (
     QueryboostServerError,
     QueryboostDataTypeError,
     QueryboostBatchSizeError,
-    QueryboostUnavailableError,
     QueryboostConfigurationError,
     clean_flight_error_message,
 )
@@ -16,6 +15,5 @@ __all__ = [
     "QueryboostBatchSizeError",
     "QueryboostPromptError",
     "QueryboostServerError",
-    "QueryboostUnavailableError",
     "clean_flight_error_message",
 ]

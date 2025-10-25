@@ -396,28 +396,6 @@ class TestBatchStreamer:
         queued_error = streamer._exception_queue.get()
         assert queued_error == test_error
 
-    def test_track_progress_raises_flight_unavailable_error_as_queryboost_unavailable(self):
-        """Test _track_progress_and_exceptions wraps FlightUnavailableError as QueryboostUnavailableError."""
-        from queryboost.exceptions import QueryboostUnavailableError
-
-        data = [{"x": 1}]
-        data_batcher = DataBatcher(data, batch_size=1)
-        handler = MockBatchHandler()
-        streamer = BatchStreamer(data_batcher, handler)
-
-        # Queue a FlightUnavailableError
-        flight_error = flight.FlightUnavailableError("Flight error: Connection lost")
-        streamer._exception_queue.put(flight_error)
-        streamer._progress_queue.put({"event": "done_writing"})
-        streamer._progress_queue.put({"event": "done_reading"})
-
-        with patch("queryboost.stream.tqdm"):
-            with pytest.raises(QueryboostUnavailableError) as exc_info:
-                streamer._track_progress_and_exceptions()
-
-            assert "Connection lost" in str(exc_info.value)
-            assert "Flight error:" not in str(exc_info.value)
-
     def test_track_progress_raises_flight_error_as_server_error(self):
         """Test _track_progress_and_exceptions wraps FlightError as QueryboostServerError."""
         from queryboost.exceptions import QueryboostServerError
@@ -539,3 +517,31 @@ class TestBatchStreamer:
                 mock_pbar.set_postfix_str.assert_any_call("Sent: 0")  # Initial call on processing_started
                 mock_pbar.set_postfix_str.assert_any_call("Sent: 5")  # First write event
                 mock_pbar.set_postfix_str.assert_any_call("Sent: 10")  # Second write event
+
+    def test_track_progress_closes_pbar_on_processing_done(self):
+        """Test _track_progress closes progress bar when processing_done event is received."""
+        data = [{"x": i} for i in range(10)]
+        data_batcher = DataBatcher(data, batch_size=5)
+        handler = MockBatchHandler()
+        streamer = BatchStreamer(data_batcher, handler)
+
+        # Simulate progress events including processing_done
+        streamer._progress_queue.put({"event": "processing_started", "message": "Processing"})
+        streamer._progress_queue.put({"event": "write", "num_rows": 5})
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "read", "num_rows": 5})
+        streamer._progress_queue.put({"event": "processing_done"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm") as mock_tqdm:
+            with patch("queryboost.stream.tqdm.write"):
+                mock_pbar = Mock()
+                mock_tqdm.return_value = mock_pbar
+
+                streamer._track_progress_and_exceptions()
+
+                # Verify progress bar was created
+                mock_tqdm.assert_called_once()
+
+                # Verify close was called when processing_done event was received
+                mock_pbar.close.assert_called_once()
