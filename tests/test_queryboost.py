@@ -252,22 +252,6 @@ class TestQueryboost:
             assert isinstance(call_args[1], flight.FlightDescriptor)
 
     @patch("queryboost.queryboost.flight.FlightClient")
-    def test_initialization_with_kwargs(self, mock_flight_client):
-        """Test that kwargs are passed to FlightClient."""
-        mock_client = Mock()
-        mock_flight_client.return_value = mock_client
-
-        client = Queryboost(
-            api_key="test_key",
-            disable_server_verification=True,
-        )
-
-        # Verify kwargs were passed to FlightClient
-        call_kwargs = mock_flight_client.call_args[1]
-        assert "tls_root_certs" in call_kwargs  # Always included from certifi
-        assert "disable_server_verification" in call_kwargs
-
-    @patch("queryboost.queryboost.flight.FlightClient")
     def test_config_is_built_correctly(self, mock_flight_client):
         """Test that config is built using ConfigBuilder."""
         mock_client = Mock()

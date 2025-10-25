@@ -39,7 +39,7 @@ class BatchStreamer:
         self._progress_queue: queue.Queue[dict[str, Any]] = queue.Queue()
         self._exception_queue: queue.Queue[Exception] = queue.Queue()
 
-        self._pbar = None
+        self._pbar: tqdm | None = None
 
         self._stop_event = threading.Event()
 
@@ -155,6 +155,11 @@ class BatchStreamer:
                         total=self._num_rows,
                         desc=message,
                     )
+                    self._pbar.set_postfix_str(f"Sent: {sent_num_rows}")
+
+                elif event == "processing_done":
+                    if self._pbar is not None:
+                        self._pbar.close()
 
                 if message and event not in _EVENTS_TO_SKIP_TQDM_WRITE:
                     tqdm.write(message)
@@ -164,7 +169,9 @@ class BatchStreamer:
 
                     if isinstance(e, flight.FlightError):
                         error_message = clean_flight_error_message(e)
+
                         raise QueryboostServerError(error_message) from None
+
                     else:
                         raise e
 

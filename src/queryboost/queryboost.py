@@ -1,7 +1,7 @@
 import json
 import uuid
 import logging
-from typing import Optional
+from typing import Any, Optional
 from pathlib import Path
 
 import certifi
@@ -27,7 +27,7 @@ class Queryboost:
         api_key: Optional[str] = None,
         url: Optional[str] = None,
         port: Optional[int] = None,
-        **kwargs,
+        flight_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """The ``Queryboost`` class is the main entry point for interacting with Queryboost via this Python SDK."""
 
@@ -44,6 +44,17 @@ class Queryboost:
         self._location = f"{self._config.url}:{self._config.port}"
         """ :meta private: """
 
+        self._flight_client_kwargs = flight_client_kwargs or {}
+        """ :meta private: """
+
+        self._connect()
+
+    def _connect(self) -> None:
+        """Connect to the Queryboost server and authenticate with the Flight handshake.
+
+        :meta private:
+        """
+
         # Load the trusted CA bundle (PEM-encoded) used for TLS certificate verification
         # certifi provides Mozilla's root CA bundle, ensuring consistent trust across platforms
         with open(certifi.where(), "rb") as f:
@@ -52,9 +63,8 @@ class Queryboost:
         self._client = flight.FlightClient(
             location=self._location,
             tls_root_certs=tls_root_certs,
-            **kwargs,
+            **self._flight_client_kwargs,
         )
-        """ :meta private: """
 
         # Authenticate with Flight handshake
         self._client.authenticate(self._auth)
@@ -103,4 +113,7 @@ class Queryboost:
         descriptor = flight.FlightDescriptor.for_command(json.dumps(command).encode("utf-8"))
 
         batch_streamer = BatchStreamer(data_batcher, batch_handler)
+
+        self._client.wait_for_available()
+
         batch_streamer.stream(self._client, descriptor)
