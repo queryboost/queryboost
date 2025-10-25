@@ -72,7 +72,7 @@ class TestValidatePrompt:
         with pytest.raises(QueryboostPromptError) as exc_info:
             validate_prompt(prompt, column_names)
 
-        assert "at least one column reference" in str(exc_info.value)
+        assert "Prompt is required" in str(exc_info.value)
 
     def test_prompt_with_braces_but_no_valid_reference(self):
         """Test prompt with braces but no valid column names raises error."""

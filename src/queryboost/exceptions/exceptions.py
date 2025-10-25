@@ -13,6 +13,10 @@ class QueryboostDataTypeError(QueryboostError):
     """Raised when a data type error occurs."""
 
 
+class QueryboostDataColumnError(QueryboostError):
+    """Raised when a data column error occurs."""
+
+
 class QueryboostBatchSizeError(QueryboostError):
     """Raised when a batch size error occurs."""
 
