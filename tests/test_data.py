@@ -2,7 +2,11 @@ import pytest
 import pyarrow as pa
 from datasets import Dataset, IterableDataset
 
-from queryboost.exceptions import QueryboostDataTypeError, QueryboostBatchSizeError
+from queryboost.exceptions import (
+    QueryboostDataTypeError,
+    QueryboostBatchSizeError,
+    QueryboostDataColumnError,
+)
 from queryboost.utils.data import DataBatcher, invert_list_of_dicts
 
 
@@ -291,3 +295,32 @@ class TestDataBatcher:
         # Should raise StopIteration when exhausted
         with pytest.raises(StopIteration):
             next(batcher)
+
+    def test_reserved_column_name_inference_raises_error(self):
+        """Test that using reserved column name '_inference' raises error."""
+        data = [{"text": "hello", "_inference": "not allowed"}]
+
+        with pytest.raises(QueryboostDataColumnError) as exc_info:
+            DataBatcher(data, batch_size=1)
+
+        assert "Reserved column names are not allowed" in str(exc_info.value)
+        assert "_inference" in str(exc_info.value) or "_error" in str(exc_info.value)
+
+    def test_reserved_column_name_error_raises_error(self):
+        """Test that using reserved column name '_error' raises error."""
+        data = [{"text": "hello", "_error": "not allowed"}]
+
+        with pytest.raises(QueryboostDataColumnError) as exc_info:
+            DataBatcher(data, batch_size=1)
+
+        assert "Reserved column names are not allowed" in str(exc_info.value)
+        assert "_inference" in str(exc_info.value) or "_error" in str(exc_info.value)
+
+    def test_multiple_reserved_column_names_raises_error(self):
+        """Test that using both reserved column names raises error."""
+        data = [{"_inference": "bad", "_error": "also bad", "text": "ok"}]
+
+        with pytest.raises(QueryboostDataColumnError) as exc_info:
+            DataBatcher(data, batch_size=1)
+
+        assert "Reserved column names are not allowed" in str(exc_info.value)

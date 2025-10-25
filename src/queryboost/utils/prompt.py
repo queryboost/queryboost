@@ -19,6 +19,9 @@ def validate_prompt(prompt: str, column_names: list[str]) -> bool:
     :meta private:
     """
 
+    if not prompt:
+        raise QueryboostPromptError("Prompt is required.")
+
     # Extract column names from the prompt
     prompt_column_names = [column_name for _, column_name, _, _ in string.Formatter().parse(prompt) if column_name]
 

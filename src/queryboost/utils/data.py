@@ -7,7 +7,13 @@ from datasets import Dataset, IterableDataset
 from more_itertools import peekable  # pyright: ignore
 
 from queryboost.types import BatchableData
-from queryboost.exceptions import QueryboostDataTypeError, QueryboostBatchSizeError
+from queryboost.exceptions import (
+    QueryboostDataTypeError,
+    QueryboostBatchSizeError,
+    QueryboostDataColumnError,
+)
+
+_RESERVED_COLUMN_NAMES = frozenset(["_inference", "_error"])
 
 
 class DataBatcher:
@@ -75,6 +81,11 @@ class DataBatcher:
         else:
             raise QueryboostDataTypeError(
                 f"Unsupported data type: {type(self._data)}. Please use one of the following supported types: {BatchableData}."
+            )
+
+        if _RESERVED_COLUMN_NAMES.intersection(self.schema.names):
+            raise QueryboostDataColumnError(
+                f"Reserved column names are not allowed: {', '.join(_RESERVED_COLUMN_NAMES)}."
             )
 
         self._batch_generator = _batch_generator_func(
