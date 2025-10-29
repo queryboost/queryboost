@@ -22,6 +22,7 @@ class LocalParquetBatchHandler(BatchHandler):
     def __init__(
         self,
         output_dir: Path | str,
+        target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
     ):
         """Initialize the local Parquet batch handler.
@@ -34,7 +35,7 @@ class LocalParquetBatchHandler(BatchHandler):
                 Defaults to an empty dictionary.
         """
 
-        super().__init__(metadata)
+        super().__init__(target_write_bytes, metadata)
 
         self._output_dir = Path(output_dir)
         """ :meta private: """
@@ -42,28 +43,20 @@ class LocalParquetBatchHandler(BatchHandler):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         if any(self._output_dir.iterdir()):
-            logger.warning(f"Output directory {self._output_dir} already contains files")
+            logger.warning(
+                f"Output directory {self._output_dir} already contains files"
+            )
 
         tqdm.write(f"Saving results as parquet files to: {self._output_dir}")
-        tqdm.write("Pass a custom BatchHandler to save results elsewhere (e.g., database, S3)")
-        tqdm.write("")  # Visual separation: batch handler setup complete, AI data processing begins
+        tqdm.write(
+            "Pass a custom BatchHandler to save results elsewhere (e.g., database, S3)"
+        )
+        tqdm.write(
+            ""
+        )  # Visual separation: batch handler setup complete, AI data processing begins
 
-    def handle(
-        self,
-        batch: pa.RecordBatch,
-        batch_idx: int,
-    ) -> None:
-        """Process and save a record batch to a Parquet file.
+    def _flush(self) -> None:
 
-        This method takes a PyArrow RecordBatch and saves it to a Parquet file in the
-        configured output directory. The filename is generated using the batch_idx.
-
-        Args:
-            batch: PyArrow RecordBatch containing the data to be saved. The batch
-                structure determines the schema of the resulting Parquet file.
-            batch_idx: Integer index of the batch in the sequence of batches being processed.
-                Used to track the order and position of batches.
-        """
-
-        output_file = Path(self._output_dir) / f"batch_{batch_idx}.parquet"
-        pq.write_table(pa.Table.from_batches([batch]), output_file)
+        output_file = Path(self._output_dir) / f"part-{self._write_idx:05d}.parquet"
+        table = pa.Table.from_batches(self._buffer)
+        pq.write_table(table, output_file)

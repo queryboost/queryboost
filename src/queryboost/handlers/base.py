@@ -3,6 +3,8 @@ from typing import Any
 
 import pyarrow as pa
 
+from queryboost.exceptions import QueryboostError
+
 
 class BatchHandler(ABC):
     """Base class for batch handlers.
@@ -22,7 +24,11 @@ class BatchHandler(ABC):
     custom handlers by subclassing ``BatchHandler`` and implementing the ``handle`` method.
     """
 
-    def __init__(self, metadata: dict[str, Any] = {}):
+    def __init__(
+        self,
+        target_write_bytes: int = 256 * 1024 * 1024,
+        metadata: dict[str, Any] = {},
+    ):
         """Initialize the batch handler.
 
         Args:
@@ -31,26 +37,41 @@ class BatchHandler(ABC):
                 Defaults to an empty dictionary.
         """
 
-        self._metadata = metadata
-        """ :meta private: """
+        if target_write_bytes < 1:
+            raise QueryboostError("Target write bytes must be greater than 0.")
 
-    @abstractmethod
+        self._target_write_bytes = target_write_bytes
+        self._metadata = metadata
+
+        # Buffer state
+        self._buffer: list[pa.RecordBatch] = []
+        self._buffer_bytes: int = 0
+
+        self._write_idx: int = 0
+
     def handle(
         self,
         batch: pa.RecordBatch,
         batch_idx: int,
     ) -> None:  # pragma: no cover
-        """Process a single record batch received from the Queryboost server.
 
-        This abstract method must be implemented by concrete handler classes to define
-        how record batches should be processed. The implementation can perform operations
-        like saving to storage, uploading to databases, or custom processing logic.
+        self._buffer.append(batch)
+        self._buffer_bytes += batch.nbytes
 
-        Args:
-            batch: PyArrow RecordBatch containing the data to be processed. The batch
-                structure determines the schema of the data.
-            batch_idx: Integer index of the batch in the sequence of batches being processed.
-                Used to track the order and position of batches.
-        """
+        if self._buffer_bytes >= self._target_write_bytes:
+            self._flush()
 
+            self._buffer.clear()
+            self._buffer_bytes = 0
+
+            self._write_idx += 1
+
+    def close(self) -> None:
+        """Flush any remaining buffered data. Call when you're done reading batches."""
+
+        if self._buffer:
+            self._flush()
+
+    @abstractmethod
+    def _flush(self) -> None:  # pragma: no cover
         pass

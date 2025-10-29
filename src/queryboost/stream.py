@@ -205,6 +205,8 @@ class BatchStreamer:
         try:
             self._track_progress_and_exceptions()
 
+            self._batch_handler.close()
+
         finally:
             self._stop_event.set()
 
