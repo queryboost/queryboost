@@ -105,9 +105,9 @@ class TestS3ParquetBatchHandler:
         batch = pa.RecordBatch.from_pydict({"col": [1, 2, 3]})
         handler.handle(batch)
 
-        # Verify file was written with correct path
+        # Verify file was written with correct path (bucket/key format)
         mock_fs = mock_s3_fs["mock_fs"]
-        expected_path = "s3://test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-prefix/part-00000.parquet"
         mock_fs.open_output_stream.assert_called_once_with(expected_path)
 
         # Verify data was written
@@ -138,7 +138,7 @@ class TestS3ParquetBatchHandler:
 
         # Now file should be written
         assert mock_fs.open_output_stream.call_count == 1
-        expected_path = "s3://test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-prefix/part-00000.parquet"
         mock_fs.open_output_stream.assert_called_with(expected_path)
 
         # Verify combined data
@@ -168,9 +168,9 @@ class TestS3ParquetBatchHandler:
         assert mock_fs.open_output_stream.call_count == 3
 
         expected_calls = [
-            (("s3://test-bucket/test-prefix/part-00000.parquet",),),
-            (("s3://test-bucket/test-prefix/part-00001.parquet",),),
-            (("s3://test-bucket/test-prefix/part-00002.parquet",),),
+            (("test-bucket/test-prefix/part-00000.parquet",),),
+            (("test-bucket/test-prefix/part-00001.parquet",),),
+            (("test-bucket/test-prefix/part-00002.parquet",),),
         ]
         mock_fs.open_output_stream.assert_has_calls(expected_calls)
 
@@ -229,7 +229,7 @@ class TestS3ParquetBatchHandler:
 
         # Verify data was written and can be read back
         written_files = mock_s3_fs["written_files"]
-        expected_path = "s3://test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-prefix/part-00000.parquet"
         assert expected_path in written_files
 
         parquet_bytes = BytesIO(written_files[expected_path])
@@ -257,7 +257,7 @@ class TestS3ParquetBatchHandler:
 
         # Verify file was written
         written_files = mock_s3_fs["written_files"]
-        expected_path = "s3://test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-prefix/part-00000.parquet"
         assert expected_path in written_files
 
         # Verify empty file structure

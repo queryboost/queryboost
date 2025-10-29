@@ -54,7 +54,12 @@ class S3ParquetBatchHandler(BatchHandler):
         # Ensure prefix is non-empty and currently empty in S3
         self._check_prefix()
 
-        tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/")
+        tqdm.write(
+            f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/"
+        )
+        tqdm.write(
+            ""
+        )  # Visual separation: batch handler setup complete, AI data processing begins
 
     def _ensure_bucket_exists(self) -> None:
         """Check if bucket exists; create it if not."""
@@ -69,7 +74,9 @@ class S3ParquetBatchHandler(BatchHandler):
                 # Let AWS config determine region which mirrors CLI behavior
                 self._s3_client.create_bucket(Bucket=self._bucket)
             else:
-                raise QueryboostBatchHandlerError(f"Failed to access S3 bucket '{self._bucket}'.") from e
+                raise QueryboostBatchHandlerError(
+                    f"Failed to access S3 bucket '{self._bucket}'."
+                ) from e
 
     def _check_prefix(self) -> None:
         """Check if the S3 prefix is valid."""
@@ -95,12 +102,11 @@ class S3ParquetBatchHandler(BatchHandler):
         to a sequentially numbered Parquet file (e.g., part-00000.parquet) in S3.
         """
 
-        key = f"{self._prefix}/part-{self._write_idx:05d}.parquet"
-        s3_path = f"s3://{self._bucket}/{key}"
+        path = f"{self._bucket}/{self._prefix}/part-{self._write_idx:05d}.parquet"
 
         # Combine buffered batches into a single table
         table = pa.Table.from_batches(self._buffer)
 
         # Stream Parquet bytes directly to S3
-        with self._fs.open_output_stream(s3_path) as out:
+        with self._fs.open_output_stream(path) as out:
             pq.write_table(table, out)
