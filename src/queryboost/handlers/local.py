@@ -13,10 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 class LocalParquetBatchHandler(BatchHandler):
-    """Handler that saves batches to local Parquet files.
+    """Handler that saves batches to local Parquet files with buffering.
 
-    This handler processes record batches by saving each one to a separate Parquet file
-    in a specified local directory.
+    This handler accumulates record batches in memory and writes them to Parquet files
+    when the buffer exceeds ``target_write_bytes``. Each flush operation creates a separate
+    Parquet file (part-00000.parquet, part-00001.parquet, etc.) in the specified directory.
+
+    This buffering approach reduces file I/O overhead by combining multiple small batches
+    into fewer, larger Parquet files.
     """
 
     def __init__(
@@ -30,6 +34,9 @@ class LocalParquetBatchHandler(BatchHandler):
         Args:
             output_dir: Directory path where Parquet files will be saved. The directory
                 will be created if it doesn't exist.
+            target_write_bytes: Target size in bytes for each Parquet file. When the
+                accumulated buffer size exceeds this threshold, batches are written to
+                a new Parquet file. Defaults to 256 MB.
             metadata: Optional metadata dictionary that will be stored with the handler.
                 This can include any additional information needed for processing.
                 Defaults to an empty dictionary.
@@ -56,6 +63,11 @@ class LocalParquetBatchHandler(BatchHandler):
         )  # Visual separation: batch handler setup complete, AI data processing begins
 
     def _flush(self) -> None:
+        """Write buffered batches to a Parquet file.
+
+        Combines all batches in the buffer into a single PyArrow Table and writes it
+        to a sequentially numbered Parquet file (e.g., part-00000.parquet).
+        """
 
         output_file = Path(self._output_dir) / f"part-{self._write_idx:05d}.parquet"
         table = pa.Table.from_batches(self._buffer)

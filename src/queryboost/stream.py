@@ -85,7 +85,6 @@ class BatchStreamer:
         """
 
         try:
-            batch_idx = 0
             for chunk in reader:
                 if self._stop_event.is_set():
                     break
@@ -95,12 +94,10 @@ class BatchStreamer:
                     self._progress_queue.put(metadata)
 
                 if record_batch := chunk.data:
-                    self._batch_handler.handle(record_batch, batch_idx)
+                    self._batch_handler.handle(record_batch)
 
                     num_rows = record_batch.num_rows
                     self._progress_queue.put({"event": "read", "num_rows": num_rows})
-
-                    batch_idx += 1
 
         except StopIteration:
             # StopIteration is raised when the stream is finished
