@@ -50,17 +50,11 @@ class LocalParquetBatchHandler(BatchHandler):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         if any(self._output_dir.iterdir()):
-            logger.warning(
-                f"Output directory {self._output_dir} already contains files"
-            )
+            logger.warning(f"Output directory {self._output_dir} already contains files")
 
         tqdm.write(f"Saving results as parquet files to: {self._output_dir}")
-        tqdm.write(
-            "Pass a custom BatchHandler to save results elsewhere (e.g., database, S3)"
-        )
-        tqdm.write(
-            ""
-        )  # Visual separation: batch handler setup complete, AI data processing begins
+        tqdm.write("Pass a custom BatchHandler to save results elsewhere (e.g., database, S3)")
+        tqdm.write("")  # Visual separation: batch handler setup complete, AI data processing begins
 
     def _flush(self) -> None:
         """Write buffered batches to a Parquet file.

@@ -106,12 +106,14 @@ Using the customer service transcript example from above:
 
 Batch handlers control how Queryboost handles results that stream in from the API. They can write to local files, upload to cloud storage, insert into databases, or perform custom post-processing.
 
+The `BatchHandler` base class implements buffering logic that accumulates record batches in memory until they exceed `target_write_bytes` (default: 256 MB), then flushes them to the destination. This reduces write overhead by combining multiple small batches into fewer, larger writes.
+
 Queryboost includes `LocalParquetBatchHandler` by default. You can create custom handlers for other destinations:
 
 - Databases (PostgreSQL, Snowflake, BigQuery, etc.)
 - Object stores (S3, GCS)
 
-Custom handlers inherit from `BatchHandler` and implement a `handle(batch, batch_idx)` method. See `src/queryboost/handlers/local.py` for a reference implementation.
+Custom handlers inherit from `BatchHandler` and implement a `_flush()` method that writes the accumulated batches to their destination. The `target_write_bytes` parameter can be configured to optimize for different backends. See `src/queryboost/handlers/local.py` for a reference implementation.
 
 ## License
 
