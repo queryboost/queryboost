@@ -202,9 +202,9 @@ class BatchStreamer:
         try:
             self._track_progress_and_exceptions()
 
+        finally:
             self._batch_handler.close()
 
-        finally:
             self._stop_event.set()
 
             if self._pbar is not None:
