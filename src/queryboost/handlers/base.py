@@ -22,7 +22,7 @@ class BatchHandler(ABC):
     - Streaming to another service
     - Custom processing logic
 
-    The buffering approach reduces write overhead by batching multiple small record batches
+    The buffering approach reduces write overhead by combining multiple small record batches
     into fewer, larger writes. This is especially important for network-based destinations
     like S3 or databases.
 

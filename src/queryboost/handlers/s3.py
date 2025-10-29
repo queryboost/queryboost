@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import boto3  # type: ignore
@@ -10,6 +11,9 @@ from botocore.exceptions import ClientError  # type: ignore
 from queryboost.exceptions import QueryboostBatchHandlerError
 
 from .base import BatchHandler
+
+logger = logging.getLogger(__name__)
+""" :meta private: """
 
 
 class S3ParquetBatchHandler(BatchHandler):
@@ -55,7 +59,7 @@ class S3ParquetBatchHandler(BatchHandler):
         self._check_prefix()
 
         tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/")
-        tqdm.write("")  # Visual separation: batch handler setup complete, AI data processing begins
+        tqdm.write("")
 
     def _ensure_bucket_exists(self) -> None:
         """Check if bucket exists; create it if not."""
