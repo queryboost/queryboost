@@ -54,12 +54,8 @@ class S3ParquetBatchHandler(BatchHandler):
         # Ensure prefix is non-empty and currently empty in S3
         self._check_prefix()
 
-        tqdm.write(
-            f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/"
-        )
-        tqdm.write(
-            ""
-        )  # Visual separation: batch handler setup complete, AI data processing begins
+        tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/")
+        tqdm.write("")  # Visual separation: batch handler setup complete, AI data processing begins
 
     def _ensure_bucket_exists(self) -> None:
         """Check if bucket exists; create it if not."""
@@ -74,9 +70,7 @@ class S3ParquetBatchHandler(BatchHandler):
                 # Let AWS config determine region which mirrors CLI behavior
                 self._s3_client.create_bucket(Bucket=self._bucket)
             else:
-                raise QueryboostBatchHandlerError(
-                    f"Failed to access S3 bucket '{self._bucket}'."
-                ) from e
+                raise QueryboostBatchHandlerError(f"Failed to access S3 bucket '{self._bucket}'.") from e
 
     def _check_prefix(self) -> None:
         """Check if the S3 prefix is valid."""
