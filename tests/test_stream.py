@@ -17,8 +17,9 @@ class MockBatchHandler(BatchHandler):
         super().__init__()
         self.handled_batches = []
 
-    def handle(self, batch: pa.RecordBatch, batch_idx: int):
-        self.handled_batches.append((batch, batch_idx))
+    def _flush(self):
+        """Store flushed batches for verification."""
+        self.handled_batches.extend(self._buffer)
 
 
 class TestBatchStreamer:
@@ -74,7 +75,9 @@ class TestBatchStreamer:
         """Test _read method processes batches from reader."""
         data = [{"x": 1}]
         data_batcher = DataBatcher(data, batch_size=1)
+        # Use small target to trigger flush for each batch
         handler = MockBatchHandler()
+        handler._target_write_bytes = 1
         streamer = BatchStreamer(data_batcher, handler)
 
         # Create mock reader with batches
@@ -94,10 +97,8 @@ class TestBatchStreamer:
 
         streamer._read(mock_reader)
 
-        # Verify handler received both batches
+        # Verify handler received both batches after flush
         assert len(handler.handled_batches) == 2
-        assert handler.handled_batches[0][1] == 0  # batch_idx
-        assert handler.handled_batches[1][1] == 1
 
         # Verify queue received read events
         events = []
@@ -351,6 +352,8 @@ class TestBatchStreamer:
         data = [{"x": 1}]
         data_batcher = DataBatcher(data, batch_size=1)
         handler = MockBatchHandler()
+        # Use small target to trigger flush immediately
+        handler._target_write_bytes = 1
         streamer = BatchStreamer(data_batcher, handler)
 
         batch1 = pa.RecordBatch.from_pydict({"result": [1]})

@@ -13,15 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 class LocalParquetBatchHandler(BatchHandler):
-    """Handler that saves batches to local Parquet files.
+    """Handler that saves batches to local Parquet files with buffering.
 
-    This handler processes record batches by saving each one to a separate Parquet file
-    in a specified local directory.
+    This handler accumulates record batches in memory and writes them to Parquet files
+    when the buffer exceeds ``target_write_bytes``. Each flush operation creates a separate
+    Parquet file (part-00000.parquet, part-00001.parquet, etc.) in the specified directory.
+
+    This buffering approach reduces file I/O overhead by combining multiple small batches
+    into fewer, larger Parquet files.
     """
 
     def __init__(
         self,
         output_dir: Path | str,
+        target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
     ):
         """Initialize the local Parquet batch handler.
@@ -29,12 +34,15 @@ class LocalParquetBatchHandler(BatchHandler):
         Args:
             output_dir: Directory path where Parquet files will be saved. The directory
                 will be created if it doesn't exist.
+            target_write_bytes: Target size in bytes for each Parquet file. When the
+                accumulated buffer size exceeds this threshold, batches are written to
+                a new Parquet file. Defaults to 256 MB.
             metadata: Optional metadata dictionary that will be stored with the handler.
                 This can include any additional information needed for processing.
                 Defaults to an empty dictionary.
         """
 
-        super().__init__(metadata)
+        super().__init__(target_write_bytes, metadata)
 
         self._output_dir = Path(output_dir)
         """ :meta private: """
@@ -48,22 +56,13 @@ class LocalParquetBatchHandler(BatchHandler):
         tqdm.write("Pass a custom BatchHandler to save results elsewhere (e.g., database, S3)")
         tqdm.write("")  # Visual separation: batch handler setup complete, AI data processing begins
 
-    def handle(
-        self,
-        batch: pa.RecordBatch,
-        batch_idx: int,
-    ) -> None:
-        """Process and save a record batch to a Parquet file.
+    def _flush(self) -> None:
+        """Write buffered batches to a Parquet file.
 
-        This method takes a PyArrow RecordBatch and saves it to a Parquet file in the
-        configured output directory. The filename is generated using the batch_idx.
-
-        Args:
-            batch: PyArrow RecordBatch containing the data to be saved. The batch
-                structure determines the schema of the resulting Parquet file.
-            batch_idx: Integer index of the batch in the sequence of batches being processed.
-                Used to track the order and position of batches.
+        Combines all batches in the buffer into a single PyArrow Table and writes it
+        to a sequentially numbered Parquet file (e.g., part-00000.parquet).
         """
 
-        output_file = Path(self._output_dir) / f"batch_{batch_idx}.parquet"
-        pq.write_table(pa.Table.from_batches([batch]), output_file)
+        output_file = Path(self._output_dir) / f"part-{self._write_idx:05d}.parquet"
+        table = pa.Table.from_batches(self._buffer)
+        pq.write_table(table, output_file)
