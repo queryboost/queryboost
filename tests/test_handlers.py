@@ -94,9 +94,12 @@ class TestBatchHandler:
 
     def test_invalid_target_write_bytes(self):
         """Test that target_write_bytes must be greater than 0."""
-        from queryboost.exceptions import QueryboostError
+        from queryboost.exceptions import QueryboostBatchHandlerError
 
-        with pytest.raises(QueryboostError, match="Target write bytes must be greater than 0"):
+        with pytest.raises(
+            QueryboostBatchHandlerError,
+            match="target_write_bytes must be greater than 0.",
+        ):
             MockBatchHandler(target_write_bytes=0)
 
 

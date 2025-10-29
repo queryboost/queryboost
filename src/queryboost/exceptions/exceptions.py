@@ -25,6 +25,10 @@ class QueryboostPromptError(QueryboostError):
     """Raised when a prompt error occurs."""
 
 
+class QueryboostBatchHandlerError(QueryboostError):
+    """Raised when a batch handler error occurs."""
+
+
 class QueryboostServerError(QueryboostError):
     """Raised when a server-side error occurs."""
 

@@ -3,7 +3,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from queryboost.exceptions import QueryboostError
+from queryboost.exceptions import QueryboostBatchHandlerError
 
 
 class BatchHandler(ABC):
@@ -47,7 +47,7 @@ class BatchHandler(ABC):
         """
 
         if target_write_bytes < 1:
-            raise QueryboostError("Target write bytes must be greater than 0.")
+            raise QueryboostBatchHandlerError("target_write_bytes must be greater than 0.")
 
         self._target_write_bytes = target_write_bytes
         self._metadata = metadata
