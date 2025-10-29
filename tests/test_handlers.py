@@ -96,9 +96,7 @@ class TestBatchHandler:
         """Test that target_write_bytes must be greater than 0."""
         from queryboost.exceptions import QueryboostError
 
-        with pytest.raises(
-            QueryboostError, match="Target write bytes must be greater than 0"
-        ):
+        with pytest.raises(QueryboostError, match="Target write bytes must be greater than 0"):
             MockBatchHandler(target_write_bytes=0)
 
 
@@ -200,9 +198,7 @@ class TestLocalParquetBatchHandler:
             output_dir = Path(tmpdir) / "subdir" / "nested"
 
             # Directory should be created during initialization
-            handler = LocalParquetBatchHandler(
-                output_dir=output_dir, target_write_bytes=1
-            )
+            handler = LocalParquetBatchHandler(output_dir=output_dir, target_write_bytes=1)
 
             assert output_dir.exists()
             assert output_dir.is_dir()
@@ -232,9 +228,7 @@ class TestLocalParquetBatchHandler:
         """Test that buffering combines multiple batches into single file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Use large target so batches accumulate
-            handler = LocalParquetBatchHandler(
-                output_dir=tmpdir, target_write_bytes=1000000
-            )
+            handler = LocalParquetBatchHandler(output_dir=tmpdir, target_write_bytes=1000000)
 
             # Add two batches
             batch1 = pa.RecordBatch.from_pydict({"value": [1, 2]})
@@ -261,9 +255,7 @@ class TestLocalParquetBatchHandler:
 
             # Create empty batch with schema
             schema = pa.schema([("col", pa.int64())])
-            batch = pa.RecordBatch.from_arrays(
-                [pa.array([], type=pa.int64())], schema=schema
-            )
+            batch = pa.RecordBatch.from_arrays([pa.array([], type=pa.int64())], schema=schema)
             handler.handle(batch)
 
             # Empty batch won't auto-flush (0 bytes < threshold), need to close
