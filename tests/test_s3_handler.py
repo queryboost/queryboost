@@ -62,12 +62,12 @@ class TestS3ParquetBatchHandler:
     def test_initialization_default_target_bytes(self, s3_setup, mock_s3_fs):  # noqa: ARG002
         """Test S3ParquetBatchHandler initialization with default target_write_bytes."""
         handler = S3ParquetBatchHandler(
+            name="test-run",
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
         )
 
         assert handler._bucket == s3_setup["bucket"]
-        assert handler._prefix == "test-prefix"
+        assert handler._name == "test-run"
         assert handler._target_write_bytes == 256 * 1024 * 1024
         assert handler._metadata == {}
 
@@ -75,8 +75,8 @@ class TestS3ParquetBatchHandler:
         """Test initialization with custom target_write_bytes."""
         target_bytes = 128 * 1024 * 1024
         handler = S3ParquetBatchHandler(
+            name="test-run",
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
             target_write_bytes=target_bytes,
         )
 
@@ -86,8 +86,8 @@ class TestS3ParquetBatchHandler:
         """Test initialization with custom metadata."""
         metadata = {"source": "test", "version": "1.0"}
         handler = S3ParquetBatchHandler(
+            name="test-run",
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
             metadata=metadata,
         )
 
@@ -96,8 +96,8 @@ class TestS3ParquetBatchHandler:
     def test_flush_creates_s3_file(self, s3_setup, mock_s3_fs):
         """Test that flush creates a Parquet file in S3."""
         handler = S3ParquetBatchHandler(
+            name="test-run",
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
             target_write_bytes=1,  # Trigger flush immediately
         )
 
@@ -107,7 +107,7 @@ class TestS3ParquetBatchHandler:
 
         # Verify file was written with correct path (bucket/key format)
         mock_fs = mock_s3_fs["mock_fs"]
-        expected_path = "test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-run/part-00000.parquet"
         mock_fs.open_output_stream.assert_called_once_with(expected_path)
 
         # Verify data was written
@@ -118,8 +118,8 @@ class TestS3ParquetBatchHandler:
     def test_buffering_combines_batches(self, s3_setup, mock_s3_fs):
         """Test that buffering combines multiple batches into single S3 file."""
         handler = S3ParquetBatchHandler(
+            name="test-run",
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
             target_write_bytes=1000000,  # Large threshold
         )
 
@@ -138,7 +138,7 @@ class TestS3ParquetBatchHandler:
 
         # Now file should be written
         assert mock_fs.open_output_stream.call_count == 1
-        expected_path = "test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-run/part-00000.parquet"
         mock_fs.open_output_stream.assert_called_with(expected_path)
 
         # Verify combined data
@@ -154,7 +154,7 @@ class TestS3ParquetBatchHandler:
         """Test that multiple flushes create sequentially numbered files."""
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
             target_write_bytes=1,  # Trigger flush for each batch
         )
 
@@ -168,18 +168,18 @@ class TestS3ParquetBatchHandler:
         assert mock_fs.open_output_stream.call_count == 3
 
         expected_calls = [
-            (("test-bucket/test-prefix/part-00000.parquet",),),
-            (("test-bucket/test-prefix/part-00001.parquet",),),
-            (("test-bucket/test-prefix/part-00002.parquet",),),
+            (("test-bucket/test-run/part-00000.parquet",),),
+            (("test-bucket/test-run/part-00001.parquet",),),
+            (("test-bucket/test-run/part-00002.parquet",),),
         ]
         mock_fs.open_output_stream.assert_has_calls(expected_calls)
 
-    def test_prefix_must_not_be_empty(self, s3_setup, mock_s3_fs):  # noqa: ARG002
-        """Test that empty prefix raises QueryboostBatchHandlerError."""
-        with pytest.raises(QueryboostBatchHandlerError, match="S3 prefix is required"):
+    def test_name_must_not_be_empty(self, s3_setup, mock_s3_fs):  # noqa: ARG002
+        """Test that empty name raises QueryboostBatchHandlerError."""
+        with pytest.raises(QueryboostBatchHandlerError, match="name cannot be empty"):
             S3ParquetBatchHandler(
+                name="",
                 bucket=s3_setup["bucket"],
-                prefix="",
             )
 
     def test_prefix_must_be_empty_initially(self, s3_setup, mock_s3_fs):  # noqa: ARG002
@@ -188,31 +188,31 @@ class TestS3ParquetBatchHandler:
         s3_client = s3_setup["s3_client"]
         s3_client.put_object(
             Bucket=s3_setup["bucket"],
-            Key="existing-prefix/file.txt",
+            Key="existing-run/file.txt",
             Body=b"data",
         )
 
         # Try to create handler with existing prefix
         with pytest.raises(QueryboostBatchHandlerError, match="already contains files"):
             S3ParquetBatchHandler(
+                name="existing-run",
                 bucket=s3_setup["bucket"],
-                prefix="existing-prefix",
             )
 
     def test_strips_leading_trailing_slashes(self, s3_setup, mock_s3_fs):  # noqa: ARG002
-        """Test that prefix slashes are normalized."""
+        """Test that name slashes are normalized."""
         handler = S3ParquetBatchHandler(
+            name="/test-run/",
             bucket=s3_setup["bucket"],
-            prefix="/test-prefix/",
         )
 
-        assert handler._prefix == "test-prefix"
+        assert handler._name == "test-run"
 
     def test_handle_with_various_data_types(self, s3_setup, mock_s3_fs):
         """Test handling batches with various PyArrow data types."""
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
             target_write_bytes=1,
         )
 
@@ -229,7 +229,7 @@ class TestS3ParquetBatchHandler:
 
         # Verify data was written and can be read back
         written_files = mock_s3_fs["written_files"]
-        expected_path = "test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-run/part-00000.parquet"
         assert expected_path in written_files
 
         parquet_bytes = BytesIO(written_files[expected_path])
@@ -243,7 +243,7 @@ class TestS3ParquetBatchHandler:
         """Test handling empty batch."""
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
             target_write_bytes=1,
         )
 
@@ -257,7 +257,7 @@ class TestS3ParquetBatchHandler:
 
         # Verify file was written
         written_files = mock_s3_fs["written_files"]
-        expected_path = "test-bucket/test-prefix/part-00000.parquet"
+        expected_path = "test-bucket/test-run/part-00000.parquet"
         assert expected_path in written_files
 
         # Verify empty file structure
@@ -270,7 +270,7 @@ class TestS3ParquetBatchHandler:
         """Test that close() flushes any remaining batches in buffer."""
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
             target_write_bytes=1000000,  # Large threshold
         )
 
@@ -289,7 +289,7 @@ class TestS3ParquetBatchHandler:
         """Test that close() with empty buffer doesn't create files."""
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
         )
 
         handler.close()
@@ -304,7 +304,7 @@ class TestS3ParquetBatchHandler:
 
         handler = S3ParquetBatchHandler(
             bucket=s3_setup["bucket"],
-            prefix="test-prefix",
+            name="test-run",
         )
         assert isinstance(handler, BatchHandler)
 
@@ -316,7 +316,7 @@ class TestS3ParquetBatchHandler:
             # Create handler with non-existent bucket
             handler = S3ParquetBatchHandler(
                 bucket="new-bucket",
-                prefix="test-prefix",
+                name="test-run",
             )
 
             # Verify bucket was created
@@ -342,5 +342,5 @@ class TestS3ParquetBatchHandler:
                 with pytest.raises(QueryboostBatchHandlerError, match="Failed to access S3 bucket"):
                     S3ParquetBatchHandler(
                         bucket="test-bucket",
-                        prefix="test-prefix",
+                        name="test-run",
                     )

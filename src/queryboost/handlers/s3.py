@@ -29,36 +29,37 @@ class S3ParquetBatchHandler(BatchHandler):
 
     def __init__(
         self,
+        name: str,
         bucket: str,
-        prefix: str,
         target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
     ):
         """Initialize the S3 Parquet batch handler.
 
         Args:
-            bucket: S3 bucket name where files will be uploaded
-            prefix: Required prefix/folder path in the bucket (must be empty initially)
+            name: Name for this handler run, used as the S3 prefix/folder path.
+                Can include path separators for hierarchical organization (e.g., "prod/2025/my-run").
+                The prefix must be empty initially (no existing files).
+            bucket: S3 bucket name where files will be uploaded.
             target_write_bytes: Target size in bytes for each Parquet file. When the
                 accumulated buffer size exceeds this threshold, batches are written to
                 a new Parquet file in S3. Defaults to 256 MB.
-            metadata: Optional metadata dictionary
+            metadata: Optional metadata dictionary.
         """
 
-        super().__init__(target_write_bytes, metadata)
+        super().__init__(name, target_write_bytes, metadata)
 
         self._bucket = bucket
-        self._prefix = prefix.strip("/")
         self._s3_client = boto3.client("s3")
         self._fs = pafs.S3FileSystem()
 
         # Ensure bucket exists or create it
         self._ensure_bucket_exists()
 
-        # Ensure prefix is non-empty and currently empty in S3
+        # Ensure prefix is currently empty in S3
         self._check_prefix()
 
-        tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._prefix}/")
+        tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._name}/")
         tqdm.write("")
 
     def _ensure_bucket_exists(self) -> None:
@@ -77,19 +78,16 @@ class S3ParquetBatchHandler(BatchHandler):
                 raise QueryboostBatchHandlerError(f"Failed to access S3 bucket '{self._bucket}'.") from e
 
     def _check_prefix(self) -> None:
-        """Check if the S3 prefix is valid."""
-
-        if not self._prefix:
-            raise QueryboostBatchHandlerError("S3 prefix is required.")
+        """Check if the S3 prefix is currently empty."""
 
         resp = self._s3_client.list_objects_v2(
             Bucket=self._bucket,
-            Prefix=self._prefix + "/",
+            Prefix=self._name + "/",
             MaxKeys=1,
         )
         if "Contents" in resp:
             raise QueryboostBatchHandlerError(
-                f"The S3 prefix 's3://{self._bucket}/{self._prefix}' already contains files. "
+                f"The S3 prefix 's3://{self._bucket}/{self._name}' already contains files. "
                 "Please specify an empty prefix or delete existing files before continuing."
             )
 
@@ -100,7 +98,7 @@ class S3ParquetBatchHandler(BatchHandler):
         to a sequentially numbered Parquet file (e.g., part-00000.parquet) in S3.
         """
 
-        path = f"{self._bucket}/{self._prefix}/part-{self._write_idx:05d}.parquet"
+        path = f"{self._bucket}/{self._name}/part-{self._write_idx:05d}.parquet"
 
         # Combine buffered batches into a single table
         table = pa.Table.from_batches(self._buffer)

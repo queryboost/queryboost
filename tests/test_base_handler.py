@@ -7,8 +7,8 @@ from queryboost.handlers import BatchHandler
 class MockBatchHandler(BatchHandler):
     """Mock implementation of BatchHandler for testing."""
 
-    def __init__(self, target_write_bytes: int = 256 * 1024 * 1024, metadata={}):
-        super().__init__(target_write_bytes, metadata)
+    def __init__(self, name: str = "test-handler", target_write_bytes: int = 256 * 1024 * 1024, metadata={}):
+        super().__init__(name, target_write_bytes, metadata)
         self.flushed_batches: list[list[pa.RecordBatch]] = []
 
     def _flush(self):

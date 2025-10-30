@@ -17,7 +17,7 @@ class LocalParquetBatchHandler(BatchHandler):
 
     This handler accumulates record batches in memory and writes them to Parquet files
     when the buffer exceeds ``target_write_bytes``. Each flush operation creates a separate
-    Parquet file (part-00000.parquet, part-00001.parquet, etc.) in the specified directory.
+    Parquet file (part-00000.parquet, part-00001.parquet, etc.) in a directory organized by name.
 
     This buffering approach reduces file I/O overhead by combining multiple small batches
     into fewer, larger Parquet files.
@@ -25,6 +25,7 @@ class LocalParquetBatchHandler(BatchHandler):
 
     def __init__(
         self,
+        name: str,
         output_dir: Path | str,
         target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
@@ -32,7 +33,9 @@ class LocalParquetBatchHandler(BatchHandler):
         """Initialize the local Parquet batch handler.
 
         Args:
-            output_dir: Directory path where Parquet files will be saved. The directory
+            name: Name for this handler run. The final output directory will be output_dir/name.
+                Can include path separators for hierarchical organization (e.g., "prod/2025/my-run").
+            output_dir: Base directory path where Parquet files will be saved. The directory
                 will be created if it doesn't exist.
             target_write_bytes: Target size in bytes for each Parquet file. When the
                 accumulated buffer size exceeds this threshold, batches are written to
@@ -42,9 +45,10 @@ class LocalParquetBatchHandler(BatchHandler):
                 Defaults to an empty dictionary.
         """
 
-        super().__init__(target_write_bytes, metadata)
+        super().__init__(name, target_write_bytes, metadata)
 
-        self._output_dir = Path(output_dir)
+        # Construct final output path: output_dir / name
+        self._output_dir = Path(output_dir) / self._name
         """ :meta private: """
 
         self._output_dir.mkdir(parents=True, exist_ok=True)

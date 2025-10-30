@@ -4,7 +4,7 @@ import pytest
 import pyarrow.flight as flight
 
 from queryboost import Queryboost
-from queryboost.exceptions import QueryboostConfigurationError
+from queryboost.exceptions import QueryboostError, QueryboostConfigurationError
 from queryboost.config.config import Config
 
 
@@ -304,3 +304,21 @@ class TestQueryboost:
 
         # Verify it doesn't raise an error and stream is called
         assert mock_batch_streamer.stream.called
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    def test_run_raises_error_when_both_name_and_handler_provided(self, mock_flight_client):
+        """Test that providing both name and batch_handler raises QueryboostError."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        client = Queryboost(api_key="test_key")
+
+        # Create a mock handler
+        custom_handler = Mock()
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+
+        # Verify that providing both name and batch_handler raises error
+        with pytest.raises(QueryboostError, match="Cannot specify both 'name' and 'batch_handler'"):
+            client.run(data=data, prompt=prompt, name="my-run", batch_handler=custom_handler)

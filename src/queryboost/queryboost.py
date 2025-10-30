@@ -13,6 +13,7 @@ from .utils import DataBatcher, validate_prompt
 from .config import ConfigBuilder
 from .stream import BatchStreamer
 from .handlers import BatchHandler, LocalParquetBatchHandler
+from .exceptions import QueryboostError
 
 logger = logging.getLogger(__name__)
 """ :meta private: """
@@ -73,8 +74,8 @@ class Queryboost:
         self,
         data: BatchableData,
         prompt: str,
-        name: str = str(uuid.uuid4()),
-        num_gpus: int | None = None,
+        name: Optional[str] = None,
+        num_gpus: Optional[int] = None,
         batch_size: int = 16,
         batch_handler: Optional[BatchHandler] = None,
     ) -> None:
@@ -88,17 +89,26 @@ class Queryboost:
             data: The input data to process. Can be a Hugging Face Dataset, IterableDataset, list of dictionaries,
                 or iterator of dictionaries.
             prompt: A string template that references columns in the input data.
-            name: A unique identifier for this run. Used for organizing output files. Defaults to a random UUID.
+            name: Name for this run. Used with default LocalParquetBatchHandler to organize output files.
+                Mutually exclusive with ``batch_handler``.
             num_gpus: The number of GPUs to allocate for processing. If None, automatically selects based on workload.
                 Defaults to None.
             batch_size: The number of rows to send to the server in each write operation. The server performs
                 dynamic and continuous batching to maximize GPU utilization and throughput. Defaults to 16.
-            batch_handler: A BatchHandler instance that determines how to handle the processed batches.
-                Defaults to LocalParquetBatchHandler which saves results to parquet files.
+            batch_handler: Custom batch handler instance. Mutually exclusive with ``name``.
+
+        Raises:
+            QueryboostError: If both ``name`` and ``batch_handler`` are specified.
         """
 
-        if not batch_handler:
-            batch_handler = LocalParquetBatchHandler(output_dir=Path(DEFAULT_CACHE_DIR).expanduser() / name)
+        if name is not None and batch_handler is not None:
+            raise QueryboostError("Cannot specify both 'name' and 'batch_handler'.")
+
+        if batch_handler is None:
+            batch_handler = LocalParquetBatchHandler(
+                name=name or str(uuid.uuid4()),
+                output_dir=Path(DEFAULT_CACHE_DIR).expanduser(),
+            )
 
         data_batcher = DataBatcher(data, batch_size)
 
