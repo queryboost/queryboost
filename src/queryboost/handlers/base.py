@@ -80,17 +80,21 @@ class BatchHandler(ABC):
 
         if self._buffer_bytes >= self._target_write_bytes:
             self._flush()
-
-            self._buffer.clear()
-            self._buffer_bytes = 0
-
+            self._reset_buffer()
             self._write_idx += 1
 
+    def _reset_buffer(self) -> None:
+        """Reset the buffer."""
+
+        self._buffer.clear()
+        self._buffer_bytes = 0
+
     def close(self) -> None:
-        """Flush any remaining buffered data."""
+        """Flush any remaining buffered data and reset the buffer."""
 
         if self._buffer:
             self._flush()
+            self._reset_buffer()
 
     @abstractmethod
     def _flush(self) -> None:  # pragma: no cover
