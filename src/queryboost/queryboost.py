@@ -107,7 +107,7 @@ class Queryboost:
         if batch_handler is None:
             batch_handler = LocalParquetBatchHandler(
                 name=name or str(uuid.uuid4()),
-                output_dir=Path(DEFAULT_CACHE_DIR).expanduser(),
+                cache_dir=Path(DEFAULT_CACHE_DIR).expanduser(),
             )
 
         data_batcher = DataBatcher(data, batch_size)

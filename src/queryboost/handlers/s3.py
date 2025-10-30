@@ -100,7 +100,6 @@ class S3ParquetBatchHandler(BatchHandler):
 
         path = f"{self._bucket}/{self._name}/part-{self._write_idx:05d}.parquet"
 
-        # Combine buffered batches into a single table
         table = pa.Table.from_batches(self._buffer)
 
         # Stream Parquet bytes directly to S3

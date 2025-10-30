@@ -26,16 +26,16 @@ class LocalParquetBatchHandler(BatchHandler):
     def __init__(
         self,
         name: str,
-        output_dir: Path | str,
+        cache_dir: Path | str,
         target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
     ):
         """Initialize the local Parquet batch handler.
 
         Args:
-            name: Name for this handler run. The final output directory will be output_dir/name.
+            name: Name for this handler run. The final output directory will be cache_dir/name.
                 Can include path separators for hierarchical organization (e.g., "prod/2025/my-run").
-            output_dir: Base directory path where Parquet files will be saved. The directory
+            cache_dir: Base cache directory path where Parquet files will be saved. The directory
                 will be created if it doesn't exist.
             target_write_bytes: Target size in bytes for each Parquet file. When the
                 accumulated buffer size exceeds this threshold, batches are written to
@@ -47,8 +47,8 @@ class LocalParquetBatchHandler(BatchHandler):
 
         super().__init__(name, target_write_bytes, metadata)
 
-        # Construct final output path: output_dir / name
-        self._output_dir = Path(output_dir) / self._name
+        # Construct final output path: cache_dir / name
+        self._output_dir = Path(cache_dir) / self._name
         """ :meta private: """
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
@@ -67,6 +67,8 @@ class LocalParquetBatchHandler(BatchHandler):
         to a sequentially numbered Parquet file (e.g., part-00000.parquet).
         """
 
-        output_file = Path(self._output_dir) / f"part-{self._write_idx:05d}.parquet"
+        path = Path(self._output_dir) / f"part-{self._write_idx:05d}.parquet"
+
         table = pa.Table.from_batches(self._buffer)
-        pq.write_table(table, output_file)
+
+        pq.write_table(table, path)
