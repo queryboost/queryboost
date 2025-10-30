@@ -63,7 +63,7 @@ prompt = "Did the customer's issue get resolved in this {chat_transcript}? Expla
 qb.run(
     data,
     prompt,
-    name="cust_convo_analysis", # Unique name for this run
+    name="cust_convo_analysis", # Unique name for this run passed to the default LocalParquetBatchHandler
     num_gpus=5, # Number of GPUs to reserve for this run
 )
 
@@ -110,10 +110,46 @@ The `BatchHandler` base class implements buffering logic that accumulates record
 
 Queryboost provides built-in handlers:
 
-- **`LocalParquetBatchHandler`** (default) — Saves results to local Parquet files
-- **`S3ParquetBatchHandler`** — Uploads results directly to S3
+- **`LocalParquetBatchHandler`** (default) — Saves results as parquet files to a local directory
+- **`S3ParquetBatchHandler`** — Uploads results as parquet files to S3
 
-You can also create custom handlers for other destinations like databases (PostgreSQL, Snowflake, BigQuery) and object stores (S3, GCS).
+### Using S3ParquetBatchHandler
+
+```python
+from queryboost import Queryboost
+from queryboost.handlers import S3ParquetBatchHandler
+from datasets import load_dataset
+
+qb = Queryboost()
+
+data = load_dataset("queryboost/OpenCustConvo", split="train")
+
+data = data.select(range(160))
+
+prompt = "Did the customer's issue get resolved in this {chat_transcript}?"
+
+# Create S3 handler with name and bucket
+# Name can include path separators: "prod/2025/customer-analysis"
+batch_handler = S3ParquetBatchHandler(
+    name="customer-analysis", # Unique name for this run
+    bucket="my-data-bucket"
+)
+
+qb.run(
+    data,
+    prompt,
+    batch_handler=batch_handler,
+    num_gpus=5,
+)
+
+# Results are uploaded to s3://my-data-bucket/customer-analysis/part-*.parquet
+```
+
+> **Note:** When passing a custom `batch_handler`, do not specify the `name` parameter in `run()`. The handler is already configured with its own name. The `name` parameter is only used when relying on the default `LocalParquetBatchHandler`.
+
+### Creating Custom Handlers
+
+You can also create custom handlers for other destinations like databases (PostgreSQL, Snowflake, BigQuery) or other object stores (GCS, Azure Blob).
 
 Custom handlers inherit from `BatchHandler` and implement a `_flush()` method that writes the accumulated batches to their destination. The `target_write_bytes` parameter can be configured to optimize for different backends. See `src/queryboost/handlers/local.py` or `src/queryboost/handlers/s3.py` for reference implementations.
 
