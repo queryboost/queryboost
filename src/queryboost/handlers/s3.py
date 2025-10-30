@@ -53,16 +53,13 @@ class S3ParquetBatchHandler(BatchHandler):
         self._s3_client = boto3.client("s3")
         self._fs = pafs.S3FileSystem()
 
-        # Ensure bucket exists or create it
-        self._ensure_bucket_exists()
-
-        # Ensure prefix is currently empty in S3
+        self._check_bucket()
         self._check_prefix()
 
         tqdm.write(f"Uploading results as parquet files to: s3://{bucket}/{self._name}/")
         tqdm.write("")
 
-    def _ensure_bucket_exists(self) -> None:
+    def _check_bucket(self) -> None:
         """Check if bucket exists; create it if not."""
 
         try:
@@ -80,15 +77,16 @@ class S3ParquetBatchHandler(BatchHandler):
     def _check_prefix(self) -> None:
         """Check if the S3 prefix is currently empty."""
 
-        resp = self._s3_client.list_objects_v2(
+        response = self._s3_client.list_objects_v2(
             Bucket=self._bucket,
             Prefix=self._name + "/",
             MaxKeys=1,
         )
-        if "Contents" in resp:
+
+        if "Contents" in response:
             raise QueryboostBatchHandlerError(
-                f"The S3 prefix 's3://{self._bucket}/{self._name}' already contains files. "
-                "Please specify an empty prefix or delete existing files before continuing."
+                f"The S3 path 's3://{self._bucket}/{self._name}' already contains files. "
+                "Please specify a different name or delete existing files before continuing."
             )
 
     def _flush(self) -> None:
