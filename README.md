@@ -32,7 +32,7 @@ The Python SDK provides a simple interface to the Queryboost API:
 
 - **Pipeline Orchestration** — Starts the bidirectional streaming connection and tracks progress concurrently.
 
-- **Extensible Output Handlers** — Save results locally with `LocalParquetBatchHandler` (default) or implement custom handlers for S3, databases, or any destination.
+- **Extensible Output Handlers** — Save results locally with `LocalParquetBatchHandler` (default), upload to S3 with `S3ParquetBatchHandler`, or implement custom handlers for databases or any destination.
 
 ## Usage
 
@@ -63,7 +63,7 @@ prompt = "Did the customer's issue get resolved in this {chat_transcript}? Expla
 qb.run(
     data,
     prompt,
-    name="cust_convo_analysis", # Unique name for this run
+    name="cust_convo_analysis", # Unique name for this run passed to the default LocalParquetBatchHandler
     num_gpus=5, # Number of GPUs to reserve for this run
 )
 
@@ -108,12 +108,52 @@ Batch handlers control how Queryboost handles results that stream in from the AP
 
 The `BatchHandler` base class implements buffering logic that accumulates record batches in memory until they exceed `target_write_bytes` (default: 256 MB), then flushes them to the destination. This reduces write overhead by combining multiple small batches into fewer, larger writes.
 
-Queryboost includes `LocalParquetBatchHandler` by default. You can create custom handlers for other destinations:
+Queryboost provides built-in handlers:
 
-- Databases (PostgreSQL, Snowflake, BigQuery, etc.)
-- Object stores (S3, GCS)
+- **`LocalParquetBatchHandler`** (default) — Saves results as parquet files to a local directory
+- **`S3ParquetBatchHandler`** — Uploads results as parquet files to S3
 
-Custom handlers inherit from `BatchHandler` and implement a `_flush()` method that writes the accumulated batches to their destination. The `target_write_bytes` parameter can be configured to optimize for different backends. See `src/queryboost/handlers/local.py` for a reference implementation.
+### Using S3ParquetBatchHandler
+
+```python
+import pyarrow.parquet as pq
+from datasets import load_dataset
+from queryboost import Queryboost
+from queryboost.handlers import S3ParquetBatchHandler
+
+qb = Queryboost()
+
+data = load_dataset("queryboost/OpenCustConvo", split="train")
+
+data = data.select(range(160))
+
+prompt = "Did the customer's issue get resolved in this {chat_transcript}?"
+
+# Create S3 handler with name and bucket
+# Name can include path separators: "prod/2025/customer-analysis"
+batch_handler = S3ParquetBatchHandler(
+    name="customer-analysis", # Unique name for this run
+    bucket="my-data-bucket"
+)
+
+qb.run(
+    data,
+    prompt,
+    batch_handler=batch_handler,
+    num_gpus=5,
+)
+
+# Read the results
+table = pq.read_table("s3://my-data-bucket/customer-analysis/")
+```
+
+> **Note:** When passing a custom `batch_handler`, do not specify the `name` parameter in `run()`. The handler is already configured with its own name. The `name` parameter is only used when relying on the default `LocalParquetBatchHandler`.
+
+### Creating Custom Handlers
+
+You can also create custom handlers for other destinations like databases (PostgreSQL, Snowflake, BigQuery) or other object stores (GCS, Azure Blob).
+
+Custom handlers inherit from `BatchHandler` and implement a `_flush()` method that writes the accumulated batches to their destination. The `target_write_bytes` parameter can be configured to optimize for different backends. See `src/queryboost/handlers/local.py` or `src/queryboost/handlers/s3.py` for reference implementations.
 
 ## License
 

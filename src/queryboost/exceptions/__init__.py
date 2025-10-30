@@ -5,17 +5,19 @@ from .exceptions import (
     QueryboostDataTypeError,
     QueryboostBatchSizeError,
     QueryboostDataColumnError,
+    QueryboostBatchHandlerError,
     QueryboostConfigurationError,
     clean_flight_error_message,
 )
 
 __all__ = [
     "QueryboostError",
-    "QueryboostConfigurationError",
-    "QueryboostDataTypeError",
-    "QueryboostDataColumnError",
-    "QueryboostBatchSizeError",
     "QueryboostPromptError",
     "QueryboostServerError",
+    "QueryboostDataTypeError",
+    "QueryboostBatchSizeError",
+    "QueryboostDataColumnError",
+    "QueryboostBatchHandlerError",
+    "QueryboostConfigurationError",
     "clean_flight_error_message",
 ]

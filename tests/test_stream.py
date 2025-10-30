@@ -13,9 +13,9 @@ from queryboost.handlers import BatchHandler
 class MockBatchHandler(BatchHandler):
     """Mock batch handler for testing."""
 
-    def __init__(self):
-        super().__init__()
-        self.handled_batches = []
+    def __init__(self, name: str = "test-stream"):
+        super().__init__(name)
+        self.handled_batches: list[pa.RecordBatch] = []
 
     def _flush(self):
         """Store flushed batches for verification."""

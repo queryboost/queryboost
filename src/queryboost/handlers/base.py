@@ -3,7 +3,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from queryboost.exceptions import QueryboostError
+from queryboost.exceptions import QueryboostBatchHandlerError
 
 
 class BatchHandler(ABC):
@@ -22,7 +22,7 @@ class BatchHandler(ABC):
     - Streaming to another service
     - Custom processing logic
 
-    The buffering approach reduces write overhead by batching multiple small record batches
+    The buffering approach reduces write overhead by combining multiple small record batches
     into fewer, larger writes. This is especially important for network-based destinations
     like S3 or databases.
 
@@ -32,12 +32,15 @@ class BatchHandler(ABC):
 
     def __init__(
         self,
+        name: str,
         target_write_bytes: int = 256 * 1024 * 1024,
         metadata: dict[str, Any] = {},
     ):
         """Initialize the batch handler.
 
         Args:
+            name: Name for this handler run. Used to organize output files/keys.
+                Can include path separators for hierarchical organization (e.g., "prod/2025/my-run").
             target_write_bytes: Target size in bytes for each flush operation. When the
                 accumulated buffer size exceeds this threshold, batches are flushed to
                 the destination. Defaults to 256 MB. Must be greater than 0.
@@ -46,9 +49,13 @@ class BatchHandler(ABC):
                 Defaults to an empty dictionary.
         """
 
-        if target_write_bytes < 1:
-            raise QueryboostError("Target write bytes must be greater than 0.")
+        if not name.strip():
+            raise QueryboostBatchHandlerError("name cannot be empty.")
 
+        if target_write_bytes < 1:
+            raise QueryboostBatchHandlerError("target_write_bytes must be greater than 0.")
+
+        self._name = name.strip("/")
         self._target_write_bytes = target_write_bytes
         self._metadata = metadata
 
@@ -73,17 +80,21 @@ class BatchHandler(ABC):
 
         if self._buffer_bytes >= self._target_write_bytes:
             self._flush()
-
-            self._buffer.clear()
-            self._buffer_bytes = 0
-
+            self._reset_buffer()
             self._write_idx += 1
 
+    def _reset_buffer(self) -> None:
+        """Reset the buffer."""
+
+        self._buffer.clear()
+        self._buffer_bytes = 0
+
     def close(self) -> None:
-        """Flush any remaining buffered data."""
+        """Flush any remaining buffered data and reset the buffer."""
 
         if self._buffer:
             self._flush()
+            self._reset_buffer()
 
     @abstractmethod
     def _flush(self) -> None:  # pragma: no cover
@@ -95,6 +106,7 @@ class BatchHandler(ABC):
         specific destination (e.g., disk, S3, database).
 
         The implementation can access:
+        - ``self._name``: Name for this handler run
         - ``self._buffer``: List of PyArrow RecordBatches to write
         - ``self._write_idx``: Sequential index for naming/tracking flush operations
         - ``self._metadata``: User-provided metadata dictionary
