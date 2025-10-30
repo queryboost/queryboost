@@ -116,9 +116,10 @@ Queryboost provides built-in handlers:
 ### Using S3ParquetBatchHandler
 
 ```python
+import pyarrow.parquet as pq
+from datasets import load_dataset
 from queryboost import Queryboost
 from queryboost.handlers import S3ParquetBatchHandler
-from datasets import load_dataset
 
 qb = Queryboost()
 
@@ -142,7 +143,8 @@ qb.run(
     num_gpus=5,
 )
 
-# Results are uploaded to s3://my-data-bucket/customer-analysis/part-*.parquet
+# Read the results
+table = pq.read_table("s3://my-data-bucket/customer-analysis/")
 ```
 
 > **Note:** When passing a custom `batch_handler`, do not specify the `name` parameter in `run()`. The handler is already configured with its own name. The `name` parameter is only used when relying on the default `LocalParquetBatchHandler`.
