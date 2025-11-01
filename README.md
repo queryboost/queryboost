@@ -22,7 +22,7 @@ Queryboost introduces a new architecture for AI-native data processing at scale:
 
 - **Structured Columnar Outputs** — Returns data in Apache Arrow format with a consistent schema, ready to plug directly into analytics and BI workflows.
 
-- **Probability Scores** — Every output includes per-column probability scores derived from token-level log probabilities, enabling quality filtering and uncertainty quantification. For boolean outputs, scores represent P(True).
+- **Confidence Scores** — Every output includes per-column confidence scores derived from token-level log probabilities, enabling quality filtering and uncertainty quantification.
 
 - **Optimized Model** — Powered by `queryboost-4b`, a 4B-parameter model optimized for data processing tasks with structured outputs. Outperforms larger models on reading comprehension and natural language inference. [See benchmarks →](https://queryboost.com/#benchmarks)
 
@@ -76,7 +76,7 @@ When you run this code, Queryboost executes end-to-end distributed streaming to 
 - **Streams** batches of rows to the API via bidirectional gRPC
 - **Distributes** the data stream across a pool of reserved GPUs for parallel processing
 - **Dynamically and continuously batches** rows on the server side
-- **Generates** structured outputs with consistent schema and associated probability scores
+- **Generates** structured outputs with consistent schema and associated confidence scores
 - **Streams** batches of results back from the API in real time
 - **Saves** results as Parquet files to `~/.cache/queryboost/cust_convo_analysis`
 
@@ -95,12 +95,12 @@ Using the customer service transcript example from above:
 
 **Output**
 
-| chat_id | is_resolved | explanation                                                                                                             | is_resolved_prob | explanation_prob |
-| ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------- |
-| 1       | True        | The customer was able to successfully reset their password with the new link provided by the agent.                     | 0.9823           | 0.9547           |
-| 2       | False       | The shipping issue remains unresolved, with the agent only promising to escalate and provide an update within 24 hours. | 0.0421           | 0.9312           |
+| chat_id | is_resolved | explanation                                                                                                             | is_resolved_confidence | explanation_confidence |
+| ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------- |
+| 1       | True        | The customer was able to successfully reset their password with the new link provided by the agent.                     | 0.9823                 | 0.9547                 |
+| 2       | False       | The shipping issue remains unresolved, with the agent only promising to escalate and provide an update within 24 hours. | 0.9612                 | 0.9312                 |
 
-> **Note:** Probability scores are derived from token-level log probabilities. For boolean columns like `is_resolved`, the score represents P(True).
+> **Note:** Confidence scores are derived from token-level log probabilities.
 
 ## Custom Batch Handlers
 
