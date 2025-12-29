@@ -322,3 +322,91 @@ class TestQueryboost:
         # Verify that providing both name and batch_handler raises error
         with pytest.raises(QueryboostError, match="Cannot specify both 'name' and 'batch_handler'"):
             client.run(data=data, prompt=prompt, name="my-run", batch_handler=custom_handler)
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    @patch("queryboost.queryboost.BatchStreamer")
+    @patch("queryboost.queryboost.DataBatcher")
+    @patch("queryboost.queryboost.validate_prompt")
+    @patch("queryboost.queryboost.json.dumps")
+    def test_run_with_json_schema(
+        self,
+        mock_json_dumps,
+        _mock_validate,
+        mock_data_batcher_cls,
+        mock_batch_streamer_cls,
+        mock_flight_client,
+    ):
+        """Test run method with json_schema parameter."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        mock_data_batcher = Mock()
+        mock_data_batcher.schema.names = ["text"]
+        mock_data_batcher.num_rows = 1000
+        mock_data_batcher_cls.return_value = mock_data_batcher
+
+        mock_batch_streamer = Mock()
+        mock_batch_streamer_cls.return_value = mock_batch_streamer
+
+        mock_json_dumps.return_value = '{"test": "json"}'
+
+        client = Queryboost(api_key="test_key")
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+        json_schema = {
+            "type": "object",
+            "properties": {"answer": {"type": "string"}},
+            "additionalProperties": False,
+            "required": ["answer"],
+        }
+
+        client.run(data=data, prompt=prompt, json_schema=json_schema)
+
+        # Verify json_schema was included in the command dict
+        call_args = mock_json_dumps.call_args[0]
+        command_dict = call_args[0]
+        assert command_dict["json_schema"] == json_schema
+        assert command_dict["prompt"] == prompt
+        assert command_dict["num_rows"] == 1000
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    @patch("queryboost.queryboost.BatchStreamer")
+    @patch("queryboost.queryboost.DataBatcher")
+    @patch("queryboost.queryboost.validate_prompt")
+    @patch("queryboost.queryboost.json.dumps")
+    def test_run_without_json_schema(
+        self,
+        mock_json_dumps,
+        _mock_validate,
+        mock_data_batcher_cls,
+        mock_batch_streamer_cls,
+        mock_flight_client,
+    ):
+        """Test run method without json_schema parameter (None by default)."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        mock_data_batcher = Mock()
+        mock_data_batcher.schema.names = ["text"]
+        mock_data_batcher.num_rows = 1000
+        mock_data_batcher_cls.return_value = mock_data_batcher
+
+        mock_batch_streamer = Mock()
+        mock_batch_streamer_cls.return_value = mock_batch_streamer
+
+        mock_json_dumps.return_value = '{"test": "json"}'
+
+        client = Queryboost(api_key="test_key")
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+
+        client.run(data=data, prompt=prompt)
+
+        # Verify json_schema is None in the command dict
+        call_args = mock_json_dumps.call_args[0]
+        command_dict = call_args[0]
+        assert command_dict["json_schema"] is None
+        assert command_dict["prompt"] == prompt
+        assert command_dict["num_rows"] == 1000
