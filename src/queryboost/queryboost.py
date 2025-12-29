@@ -78,6 +78,7 @@ class Queryboost:
         num_gpus: Optional[int] = None,
         batch_size: int = 16,
         batch_handler: Optional[BatchHandler] = None,
+        json_schema: Optional[dict[str, Any]] = None,
     ) -> None:
         """Process data with a prompt using Queryboost.
 
@@ -96,6 +97,19 @@ class Queryboost:
             batch_size: The number of rows to send to the server in each write operation. The server performs
                 dynamic and continuous batching to maximize GPU utilization and throughput. Defaults to 16.
             batch_handler: Custom batch handler instance. Mutually exclusive with ``name``.
+            json_schema: Optional JSON schema dict that specifies the schema for the structured output. Must follow
+                the JSON Schema specification. For Queryboost, the schema must include ``additionalProperties: false``
+                and all properties must be listed in the ``required`` array. If not provided, a recommended schema
+                will be inferred based on the prompt. Defaults to None.
+
+                Example::
+
+                    {
+                        "type": "object",
+                        "properties": {"answer": {"type": "string"}},
+                        "additionalProperties": false,
+                        "required": ["answer"],
+                    }
 
         Raises:
             QueryboostError: If both ``name`` and ``batch_handler`` are specified.
@@ -119,6 +133,7 @@ class Queryboost:
             "prompt": prompt,
             "num_gpus": num_gpus,
             "num_rows": data_batcher.num_rows,
+            "json_schema": json_schema,
         }
         descriptor = flight.FlightDescriptor.for_command(json.dumps(command).encode("utf-8"))
 
