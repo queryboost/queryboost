@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.5](https://github.com/queryboost/queryboost/compare/v0.1.4...v0.1.5)
+
+- Added `progress_callback` parameter to `Queryboost.run()` for real-time progress reporting
+- New `ProgressEvent` dataclass with `rows_sent`, `rows_received`, `total_rows`, `event`, and `error` fields
+- Callback fires on each progress event (write, read, processing_started, done_writing, done_reading, failed) and is skipped on idle timeouts
+- Enables integration with external systems (databases, UIs, orchestrators) for tracking run progress
+
+## [0.1.4](https://github.com/queryboost/queryboost/compare/v0.1.3...v0.1.4)
+
+- Added optional `json_schema` parameter to `Queryboost.run()` for specifying the structured output schema
+
 ## [0.1.3](https://github.com/queryboost/queryboost/compare/v0.1.2...v0.1.3)
 
 - Added `S3ParquetBatchHandler` for uploading results as Parquet files to S3
