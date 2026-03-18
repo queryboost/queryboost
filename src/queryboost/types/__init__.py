@@ -1,5 +1,5 @@
+from typing import Any, Union, Callable, Iterator, TypeAlias
 from dataclasses import dataclass
-from typing import Any, Callable, Union, Iterator, TypeAlias
 
 from datasets import Dataset, IterableDataset
 

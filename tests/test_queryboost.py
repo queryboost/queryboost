@@ -410,3 +410,38 @@ class TestQueryboost:
         assert command_dict["json_schema"] is None
         assert command_dict["prompt"] == prompt
         assert command_dict["num_rows"] == 1000
+
+    @patch("queryboost.queryboost.flight.FlightClient")
+    @patch("queryboost.queryboost.BatchStreamer")
+    @patch("queryboost.queryboost.DataBatcher")
+    @patch("queryboost.queryboost.validate_prompt")
+    def test_run_passes_progress_callback_to_streamer(
+        self,
+        _mock_validate,
+        mock_data_batcher_cls,
+        mock_batch_streamer_cls,
+        mock_flight_client,
+    ):
+        """Test run method passes progress_callback to BatchStreamer."""
+        mock_client = Mock()
+        mock_flight_client.return_value = mock_client
+
+        mock_data_batcher = Mock()
+        mock_data_batcher.schema.names = ["text"]
+        mock_data_batcher.num_rows = 1000
+        mock_data_batcher_cls.return_value = mock_data_batcher
+
+        mock_batch_streamer = Mock()
+        mock_batch_streamer_cls.return_value = mock_batch_streamer
+
+        client = Queryboost(api_key="test_key")
+
+        data = [{"text": "test"}]
+        prompt = "Process {text}"
+        callback = Mock()
+
+        client.run(data=data, prompt=prompt, progress_callback=callback)
+
+        # Verify BatchStreamer was created with the callback as third arg
+        call_args = mock_batch_streamer_cls.call_args[0]
+        assert call_args[2] == callback

@@ -7,9 +7,9 @@ import pyarrow as pa
 import pyarrow.flight as flight
 from tqdm import tqdm
 
+from queryboost.types import ProgressEvent, ProgressCallback
 from queryboost.utils import DataBatcher
 from queryboost.handlers import BatchHandler
-from queryboost.types import ProgressCallback, ProgressEvent
 from queryboost.exceptions import QueryboostServerError, clean_flight_error_message
 
 # Events to skip when calling tqdm.write()
