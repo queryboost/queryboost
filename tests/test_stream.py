@@ -624,6 +624,7 @@ class TestBatchStreamer:
         # The last callback should have event="failed" and error set
         failed_events = [e for e in events_received if e.event == "failed"]
         assert len(failed_events) == 1
+        assert failed_events[0].error is not None
         assert "Server crashed" in failed_events[0].error
         assert failed_events[0].rows_sent == 0
         assert failed_events[0].rows_received == 0
