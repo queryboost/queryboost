@@ -21,6 +21,7 @@ class ProgressEvent:
         total_rows: Total number of rows to process, or None if unknown (e.g. iterator input).
         event: The event type that triggered this update (e.g. ``"write"``, ``"read"``,
             ``"processing_started"``, ``"done_reading"``, ``"failed"``).
+        message: Optional message from the server.
         error: Error message if event is ``"failed"``, otherwise None.
     """
 
@@ -28,6 +29,7 @@ class ProgressEvent:
     rows_received: int
     total_rows: int | None
     event: str | None
+    message: str | None = None
     error: str | None = None
 
 

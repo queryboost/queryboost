@@ -126,7 +126,9 @@ class BatchStreamer:
         received_num_rows = 0
 
         while not (done_writing and done_reading):
+            # Reset per iteration so queue.Empty timeouts don't fire the callback with stale values
             event = None
+            message = None
             error = None
 
             try:
@@ -189,6 +191,7 @@ class BatchStreamer:
                             rows_received=received_num_rows,
                             total_rows=self._num_rows,
                             event=event,
+                            message=message,
                             error=error,
                         )
                     )
