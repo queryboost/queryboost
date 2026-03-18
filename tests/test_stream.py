@@ -5,6 +5,7 @@ import pytest
 import pyarrow as pa
 import pyarrow.flight as flight
 
+from queryboost.types import ProgressEvent
 from queryboost.utils import DataBatcher
 from queryboost.stream import BatchStreamer
 from queryboost.handlers import BatchHandler
@@ -548,3 +549,119 @@ class TestBatchStreamer:
 
                 # Verify close was called when processing_done event was received
                 mock_pbar.close.assert_called_once()
+
+    def test_progress_callback_called_on_events(self):
+        """Test progress_callback is invoked for each progress event."""
+        data = [{"x": i} for i in range(10)]
+        data_batcher = DataBatcher(data, batch_size=5)
+        handler = MockBatchHandler()
+        events_received: list[ProgressEvent] = []
+        streamer = BatchStreamer(data_batcher, handler, progress_callback=events_received.append)
+
+        streamer._progress_queue.put({"event": "write", "num_rows": 5})
+        streamer._progress_queue.put({"event": "read", "num_rows": 5})
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm"):
+            streamer._track_progress_and_exceptions()
+
+        assert len(events_received) == 4
+        assert events_received[0].event == "write"
+        assert events_received[0].rows_sent == 5
+        assert events_received[0].rows_received == 0
+        assert events_received[0].error is None
+        assert events_received[1].event == "read"
+        assert events_received[1].rows_received == 5
+        assert events_received[3].event == "done_reading"
+
+    def test_progress_callback_not_called_on_queue_empty(self):
+        """Test progress_callback is not called when queue times out."""
+        data = [{"x": 1}]
+        data_batcher = DataBatcher(data, batch_size=1)
+        handler = MockBatchHandler()
+        events_received: list[ProgressEvent] = []
+        streamer = BatchStreamer(data_batcher, handler, progress_callback=events_received.append)
+
+        call_count = 0
+
+        def mock_get(timeout=None):  # noqa: ARG001
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                raise queue.Empty()
+            elif call_count == 3:
+                return {"event": "done_writing"}
+            else:
+                return {"event": "done_reading"}
+
+        with patch.object(streamer._progress_queue, "get", side_effect=mock_get):
+            with patch("queryboost.stream.tqdm"):
+                streamer._track_progress_and_exceptions()
+
+        # Only 2 events, not 4 (the 2 queue.Empty timeouts should not trigger callback)
+        assert len(events_received) == 2
+
+    def test_progress_callback_on_flight_error(self):
+        """Test progress_callback receives failed event with error on FlightError."""
+        from queryboost.exceptions import QueryboostServerError
+
+        data = [{"x": 1}]
+        data_batcher = DataBatcher(data, batch_size=1)
+        handler = MockBatchHandler()
+        events_received: list[ProgressEvent] = []
+        streamer = BatchStreamer(data_batcher, handler, progress_callback=events_received.append)
+
+        flight_error = flight.FlightServerError("Flight error: Server crashed")
+        streamer._exception_queue.put(flight_error)
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm"):
+            with pytest.raises(QueryboostServerError):
+                streamer._track_progress_and_exceptions()
+
+        # The last callback should have event="failed" and error set
+        failed_events = [e for e in events_received if e.event == "failed"]
+        assert len(failed_events) == 1
+        assert failed_events[0].error is not None
+        assert "Server crashed" in failed_events[0].error
+        assert failed_events[0].rows_sent == 0
+        assert failed_events[0].rows_received == 0
+
+    def test_progress_callback_on_non_flight_error(self):
+        """Test progress_callback receives failed event with error on non-FlightError."""
+        data = [{"x": 1}]
+        data_batcher = DataBatcher(data, batch_size=1)
+        handler = MockBatchHandler()
+        events_received: list[ProgressEvent] = []
+        streamer = BatchStreamer(data_batcher, handler, progress_callback=events_received.append)
+
+        test_error = ValueError("Bad value")
+        streamer._exception_queue.put(test_error)
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm"):
+            with pytest.raises(ValueError):
+                streamer._track_progress_and_exceptions()
+
+        failed_events = [e for e in events_received if e.event == "failed"]
+        assert len(failed_events) == 1
+        assert failed_events[0].error == "Bad value"
+
+    def test_progress_callback_none_by_default(self):
+        """Test BatchStreamer works without progress_callback."""
+        data = [{"x": 1}]
+        data_batcher = DataBatcher(data, batch_size=1)
+        handler = MockBatchHandler()
+        streamer = BatchStreamer(data_batcher, handler)
+
+        assert streamer._progress_callback is None
+
+        streamer._progress_queue.put({"event": "done_writing"})
+        streamer._progress_queue.put({"event": "done_reading"})
+
+        with patch("queryboost.stream.tqdm"):
+            # Should complete without error even with no callback
+            streamer._track_progress_and_exceptions()
