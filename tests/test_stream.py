@@ -5,10 +5,10 @@ import pytest
 import pyarrow as pa
 import pyarrow.flight as flight
 
+from queryboost.types import ProgressEvent
 from queryboost.utils import DataBatcher
 from queryboost.stream import BatchStreamer
 from queryboost.handlers import BatchHandler
-from queryboost.types import ProgressEvent
 
 
 class MockBatchHandler(BatchHandler):
