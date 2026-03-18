@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.6](https://github.com/queryboost/queryboost/compare/v0.1.5...v0.1.6)
+
+- Added `message` field to `ProgressEvent` for passing server messages to the progress callback
+
 ## [0.1.5](https://github.com/queryboost/queryboost/compare/v0.1.4...v0.1.5)
 
 - Added `progress_callback` parameter to `Queryboost.run()` for real-time progress reporting
