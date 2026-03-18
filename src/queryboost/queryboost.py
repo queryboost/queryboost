@@ -8,7 +8,7 @@ import certifi
 import pyarrow.flight as flight
 
 from .auth import ApiKeyClientAuth
-from .types import BatchableData
+from .types import BatchableData, ProgressCallback
 from .utils import DataBatcher, validate_prompt
 from .config import ConfigBuilder
 from .stream import BatchStreamer
@@ -79,6 +79,7 @@ class Queryboost:
         batch_size: int = 16,
         batch_handler: Optional[BatchHandler] = None,
         json_schema: Optional[dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> None:
         """Process data with a prompt using Queryboost.
 
@@ -111,6 +112,11 @@ class Queryboost:
                         "required": ["answer"],
                     }
 
+            progress_callback: Optional callback function invoked with a
+                :class:`~queryboost.types.ProgressEvent` on each progress update. Useful for
+                reporting progress to external systems (databases, UIs, logging). The callback
+                is invoked on the progress-tracking thread; avoid blocking operations.
+
         Raises:
             QueryboostError: If both ``name`` and ``batch_handler`` are specified.
         """
@@ -137,7 +143,7 @@ class Queryboost:
         }
         descriptor = flight.FlightDescriptor.for_command(json.dumps(command).encode("utf-8"))
 
-        batch_streamer = BatchStreamer(data_batcher, batch_handler)
+        batch_streamer = BatchStreamer(data_batcher, batch_handler, progress_callback)
 
         self._client.wait_for_available()
 

@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from queryboost.utils import DataBatcher
 from queryboost.handlers import BatchHandler
+from queryboost.types import ProgressCallback, ProgressEvent
 from queryboost.exceptions import QueryboostServerError, clean_flight_error_message
 
 # Events to skip when calling tqdm.write()
@@ -28,12 +29,14 @@ class BatchStreamer:
         self,
         data_batcher: DataBatcher,
         batch_handler: BatchHandler,
+        progress_callback: ProgressCallback | None = None,
     ):
         self._data_batcher = data_batcher
         self._schema = self._data_batcher.schema
         self._num_rows = self._data_batcher.num_rows
 
         self._batch_handler = batch_handler
+        self._progress_callback = progress_callback
 
         # Initialize thread-safe queues for tracking progress and exceptions
         self._progress_queue: queue.Queue[dict[str, Any]] = queue.Queue()
@@ -123,6 +126,9 @@ class BatchStreamer:
         received_num_rows = 0
 
         while not (done_writing and done_reading):
+            event = None
+            error = None
+
             try:
                 item = self._progress_queue.get(timeout=0.2)
 
@@ -162,18 +168,30 @@ class BatchStreamer:
                     tqdm.write(message)
 
                 if not self._exception_queue.empty():
+                    event = "failed"
                     e = self._exception_queue.get()
 
                     if isinstance(e, flight.FlightError):
-                        error_message = clean_flight_error_message(e)
-
-                        raise QueryboostServerError(error_message) from None
-
+                        error = clean_flight_error_message(e)
+                        raise QueryboostServerError(error) from None
                     else:
+                        error = str(e)
                         raise e
 
             except queue.Empty:
                 continue
+
+            finally:
+                if self._progress_callback and event:
+                    self._progress_callback(
+                        ProgressEvent(
+                            rows_sent=sent_num_rows,
+                            rows_received=received_num_rows,
+                            total_rows=self._num_rows,
+                            event=event,
+                            error=error,
+                        )
+                    )
 
     def stream(
         self,
